@@ -3,6 +3,7 @@ import { Shot } from "./newbow/bow";
 import { SwordPvp } from "./sword/SwordPvp";
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
+import utilPlugin from "@nxg-org/mineflayer-util-plugin"
 
 declare module "mineflayer" {
     interface Bot {
@@ -18,6 +19,7 @@ declare module "mineflayer" {
 }
 
 export default function plugin(bot: Bot) {
+    if (!bot.hasPlugin(utilPlugin)) bot.loadPlugin(utilPlugin)
     const swordpvp = new SwordPvp(bot);
     const bowpvp = new HawkEye(bot);
     bot.swordpvp = swordpvp;

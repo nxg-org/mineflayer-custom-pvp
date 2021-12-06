@@ -24,7 +24,6 @@
         "@nxg-org/mineflayer-util-plugin": "^1.0.1",
         "minecraft-data": "^2.97.0",
         "mineflayer": "^3.11.2",
-        "mineflayer-pathfinder": "^1.8.0",
         "prismarine-block": "^1.10.3",
         "prismarine-item": "^1.11.1",
         "vec3": "^0.1.7"
