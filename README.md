@@ -16,6 +16,10 @@ This plugin provides the same functionality as either of those plugins, but also
     - Improved entity tracking.
       - As mineflayer-pathfinder sends position_look packets, I cannot truly "lock" onto a player as some hack clients do.
       - However, I did implement a forceLook in my util plugin that snaps the bot to the player's pos. 
+    - Know when the target is shielding
+      - Detects when an entity is shielding, then switch to axe to disable it.
+      - I was operating under the assumption that one had to crit in order to disable a shield. I was mistaken, lol. 
+      - I'll change this so that the bot hits with the axe and then immediately switches back later.
 
     Overall, expect a 80% crit rate if both bot and entity are moving INTELLIGENTLY. 95-100% crit rate otherwise.
 
