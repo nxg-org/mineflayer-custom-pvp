@@ -4,7 +4,9 @@
     "description": "Intermediate functionality for bow and sword pvp.",
     "keywords": [
         "mineflayer",
-        "mineflayer-util"
+        "mineflayer-pvp",
+        "mineflayer-plugin",
+        "mineflayer-custom-pvp"
     ],
     "repository": {
         "type": "git",
