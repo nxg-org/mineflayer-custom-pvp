@@ -1,0 +1,34 @@
+{
+    "name": "@nxg-org/mineflayer-custom-pvp",
+    "version": "1.0.2",
+    "description": "Intermediate functionality for bow and sword pvp.",
+    "keywords": [
+        "mineflayer",
+        "mineflayer-util"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/nxg-org/mineflayer-custom-pvp.git"
+    },
+    "license": "GPL-3.0",
+    "author": "generel_schwerz",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "scripts": {
+        "build": "npx tsc",
+        "prepublish": "npm run build"
+    },
+    "dependencies": {
+        "@nxg-org/mineflayer-util-plugin": "^1.0.1",
+        "minecraft-data": "^2.97.0",
+        "mineflayer": "^3.11.2",
+        "mineflayer-pathfinder": "^1.8.0",
+        "prismarine-block": "^1.10.3",
+        "prismarine-item": "^1.11.1",
+        "vec3": "^0.1.7"
+    },
+    "devDependencies": {
+        "@types/node": "^16.11.11",
+        "typescript": "^4.5.2"
+    }
+}

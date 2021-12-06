@@ -1,0 +1,37 @@
+# This workflow allows the maintainers to trigger a new release manually
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version-type:
+        description: How major the changes are [ major | minor | patch | prerelease ]
+        required: true
+        default: patch
+
+jobs:
+  release:
+    name: GitHub and NPM Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          registry-url: https://registry.npmjs.org/
+          always-auth: true
+      - name: Install dependencies
+        run: yarn --dev
+      - name: Configure git credentials
+        uses: OleksiyRudenko/gha-git-credentials@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ github.actor }}
+          email: ${{ github.actor }}@users.noreply.github.com
+      - name: Release new version to NPM
+        run: yarn publish --non-interactive --access public --${{ github.event.inputs.version-type }} --preid beta --no-git-tag-version ${{ contains(github.event.inputs.version-type, 'pre') && '--tag beta' || '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Push to GitHub
+        run: |
+          export VERSION=v$(node -pe "require('./package.json').version") &&
+          git add . && git commit -m "Release ${VERSION}" && git tag -m "" ${VERSION} && git push --follow-tags
