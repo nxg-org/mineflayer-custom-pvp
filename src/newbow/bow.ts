@@ -57,7 +57,7 @@ export class Shot {
         return new Shot(world, velocity, { position: position.offset(0, 1.5, 0), velocity: projVel });
     }
 
-    static fromFlyingArrow(world: World, { position, velocity }: Projectile) {
+    static fromArrow(world: World, { position, velocity }: Projectile) {
         return new Shot(world, new Vec3(0, 0, 0), {position, velocity})
     }
 
