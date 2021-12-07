@@ -7,23 +7,24 @@ import { toNotchianPitch, toNotchianYaw } from "../calc/conversions";
 const sleep = promisify(setTimeout);
 
 export class HawkEye {
-    target: Entity | null = null;
-    lastTarget: Entity | null = null;
-    stopped: boolean;
-    bot: Bot;
-    preparingShot: boolean;
-    preparingShotTime: number;
-    prevPlayerPositions: any[] = [];
-    prevBotPositions: any[] = [];
-    oneShot: boolean;
-    chargingArrow: boolean;
-    weapon: string = "bow";
-    infoShot: any;
-    equations: HawkEyeEquations;
-    customEquations: CustomHawkEyeEquations;
-    detectIncomingShot: boolean;
-    isAimedAt: boolean;
-    private isOffHand: boolean;
+    public target: Entity | null = null;
+    public lastTarget: Entity | null = null;
+    public stopped: boolean;
+    private bot: Bot;
+    public preparingShot: boolean;
+    public preparingShotTime: number;
+    private prevPlayerPositions: any[] = [];
+    private prevBotPositions: any[] = [];
+    public oneShot: boolean;
+    public chargingArrow: boolean;
+    public weapon: string = "bow";
+    public infoShot: any;
+    private equations: HawkEyeEquations;
+    private customEquations: CustomHawkEyeEquations;
+    public detectIncomingShot: boolean;
+    public isAimedAt: boolean;
+    public isOffHand: boolean;
+    public entityToEntityShot;
     constructor(bot: Bot) {
         this.bot = bot;
         this.stopped = false;
@@ -33,10 +34,11 @@ export class HawkEye {
         this.chargingArrow = false;
         this.equations = new HawkEyeEquations(this.bot);
         this.customEquations = new CustomHawkEyeEquations(this.bot);
-        this.detectIncomingShot = true;
+        this.detectIncomingShot = false;
         this.isAimedAt = false;
         this.isOffHand = false;
         this.bot.on("physicsTick", this.detectIncomingShotCalc.bind(this));
+        this.entityToEntityShot = this.customEquations.predictShotBetweenTwoEntities;
     }
 
     hasWeapon(weapon?: string) {
@@ -133,7 +135,7 @@ export class HawkEye {
         this.target = null;
         this.bot.removeListener("physicsTick", this.getGrades);
         this.bot.removeListener("physicsTick", this.autoCalc);
-        if (this.preparingShot) this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch)
+        if (this.preparingShot) this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch);
         this.bot.deactivateItem();
     }
 
@@ -200,7 +202,6 @@ export class HawkEye {
     };
 
     autoCalc = async () => {
-
         let waitTime;
         switch (this.weapon) {
             case "bow":
@@ -233,8 +234,6 @@ export class HawkEye {
             }
         }
 
-
-
         if (!this.preparingShot) {
             if (["bow", "crossbow", "trident"].includes(this.weapon)) {
                 this.bot.activateItem();
@@ -244,12 +243,10 @@ export class HawkEye {
         }
 
         if (this.infoShot) {
-
-
             if (this.preparingShot) {
-                this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch)
-                if (["bow", "trident"].includes(this.weapon) && Date.now() - this.preparingShotTime > waitTime) {                    
-                    this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch)
+                this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch);
+                if (["bow", "trident"].includes(this.weapon) && Date.now() - this.preparingShotTime > waitTime) {
+                    this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch);
                     // await this.bot.look(this.infoShot.yaw, this.infoShot.pitch, true);
                     this.bot.deactivateItem();
                     this.preparingShot = false;
@@ -279,7 +276,6 @@ export class HawkEye {
     };
 
     detectIncomingShotCalc() {
-
         //check if entity is holding a bow + aiming at entity
         let buffer = 0;
         // console.log(`AIMED AT?: ${this.isAimedAt}`)
