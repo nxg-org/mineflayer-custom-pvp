@@ -21,7 +21,7 @@
         "prepublish": "npm run build"
     },
     "dependencies": {
-        "@nxg-org/mineflayer-util-plugin": "^1.0.1",
+        "@nxg-org/mineflayer-util-plugin": "^1.2.4",
         "minecraft-data": "^2.97.0",
         "mineflayer": "^3.11.2",
         "prismarine-block": "^1.10.3",
