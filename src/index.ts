@@ -19,7 +19,7 @@ declare module "mineflayer" {
 }
 
 export default function plugin(bot: Bot) {
-    if (!bot.hasPlugin(utilPlugin)) bot.loadPlugin(utilPlugin)
+    if (!bot.util) bot.loadPlugin(utilPlugin)
     const swordpvp = new SwordPvp(bot);
     const bowpvp = new HawkEye(bot);
     bot.swordpvp = swordpvp;
