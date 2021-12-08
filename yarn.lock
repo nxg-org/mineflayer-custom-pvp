@@ -19,10 +19,10 @@
     jsonwebtoken "^8.5.1"
     uuid "^8.3.0"
 
-"@nxg-org/mineflayer-util-plugin@^1.2.4":
-  version "1.2.4"
-  resolved "https://registry.yarnpkg.com/@nxg-org/mineflayer-util-plugin/-/mineflayer-util-plugin-1.2.4.tgz#9a58aa9d2e82818a2229ac9c1c26d5a88afa6b6e"
-  integrity sha512-Bs3Aneii8fd107GAW60+NvIDTpUdHkCgNjoedcwAxiplo27+1DkJp3UdZ+imeJ4hNubL6hZ6jBzJY1uVCahA7g==
+"@nxg-org/mineflayer-util-plugin@^1.2.6":
+  version "1.2.6"
+  resolved "https://registry.yarnpkg.com/@nxg-org/mineflayer-util-plugin/-/mineflayer-util-plugin-1.2.6.tgz#a379a7521419bb64956b98beceae13e18b0d77cd"
+  integrity sha512-weD2aTe4OA/xb9kod9z6tMtNIcPJOQCF9Z4uQ2RqFgJV/nTJKSCXOc3xlLpBYMUf/Z2fJkqfXYVw5jSKDOZyHA==
   dependencies:
     minecraft-data "^2.97.0"
     mineflayer "^3.11.2"
