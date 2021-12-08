@@ -28,6 +28,7 @@ export type World = { blockAt(pos: Vec3): Block | null };
 export type ShotEntity = { position: Vec3; velocity: Vec3; yaw?: number; pitch?: number; heldItem?: Item | null };
 export type EntityAABB = {position: Vec3, height: number, width?: number}
 export type Projectile = { position: Vec3; velocity: Vec3 };
+const emptyVec = new Vec3(0, 0, 0)
 
 export class Shot {
     private originPos: Vec3
@@ -54,11 +55,11 @@ export class Shot {
     static fromShootingPlayer(world: World, { position, yaw, pitch, velocity, heldItem }: ShotEntity, weapon: string) {
         const speed = trajectoryInfo[weapon ?? heldItem?.name]?.v0 ?? 3.0;
         const projVel = yawPitchAndSpeedToDir(yaw!, pitch!, speed);
-        return new Shot(world, velocity, { position: position.offset(0, 1.5, 0), velocity: projVel });
+        return new Shot(world, velocity, { position: position.offset(0, 1.64, 0), velocity: projVel });
     }
 
     static fromArrow(world: World, { position, velocity }: Projectile) {
-        return new Shot(world, new Vec3(0, 0, 0), {position, velocity})
+        return new Shot(world, emptyVec, {position, velocity})
     }
 
     public checkIfXZHit({position, height, width}: EntityAABB): boolean {
