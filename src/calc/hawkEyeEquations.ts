@@ -248,6 +248,7 @@ export class HawkEyeEquations {
         if (!shotCalculation) {
             return false;
         }
+
         // Get more precision on shot
         const precisionShot = this.getPrecisionShot(
             startPosition,

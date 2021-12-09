@@ -296,7 +296,9 @@ export class HawkEye {
     }
 
     shotCrossbow() {
+
         if (this.chargingArrow) {
+            console.log("called")
             this.bot.activateItem();
             this.bot.deactivateItem();
             this.chargingArrow = false;
@@ -307,7 +309,7 @@ export class HawkEye {
             return;
         }
         const hand = this.bot.inventory.slots[this.bot.getEquipmentDestSlot(this.useHand())];
-        if (!hand) {
+        if (hand?.name !== "crossbow") {
             this.stop();
             return;
         }

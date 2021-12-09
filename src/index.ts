@@ -1,9 +1,10 @@
 import { HawkEye } from "./bow/bowpvp";
-import { Shot } from "./newbow/bow";
+import { Shot } from "./newbow/shot";
+import { EntityTracker } from "./newbow/entityTracker";
 import { SwordPvp } from "./sword/SwordPvp";
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
-import utilPlugin from "@nxg-org/mineflayer-util-plugin"
+import utilPlugin from "@nxg-org/mineflayer-util-plugin";
 
 declare module "mineflayer" {
     interface Bot {
@@ -11,19 +12,20 @@ declare module "mineflayer" {
         bowpvp: HawkEye;
     }
     interface BotEvents {
-        attackedTarget: (target: Entity) => void
-        stoppedAttacking: () => void
-        startedAttacking: (target: Entity) => void
-        targetBlockingUpdate: (target: Entity, blocking: boolean) => void
+        attackedTarget: (target: Entity) => void;
+        stoppedAttacking: () => void;
+        startedAttacking: (target: Entity) => void;
+        targetBlockingUpdate: (target: Entity, blocking: boolean) => void;
     }
 }
 
 export default function plugin(bot: Bot) {
-    if (!bot.util) bot.loadPlugin(utilPlugin)
+    if (!bot.util) bot.loadPlugin(utilPlugin);
     const swordpvp = new SwordPvp(bot);
     const bowpvp = new HawkEye(bot);
     bot.swordpvp = swordpvp;
     bot.bowpvp = bowpvp;
 }
 
-export {Shot}
+export { Shot };
+export { EntityTracker };

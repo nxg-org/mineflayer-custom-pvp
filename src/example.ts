@@ -1,6 +1,7 @@
 import { createBot } from "mineflayer";
 import customPVP from "./index";
-import { Shot } from "./newbow/bow";
+import { Shot } from "./newbow/shot";
+import { EntityTracker } from "./newbow/entityTracker";
 import { promisify } from "util";
 import { Vec3 } from "vec3";
 import { Entity } from "prismarine-entity";
@@ -8,6 +9,7 @@ const sleep = promisify(setTimeout);
 
 let listenToArrowSpawns = false;
 let target: Entity | null = null;
+let tracker: EntityTracker | undefined;
 
 
 const emptyVec = new Vec3(0, 0, 0);
@@ -20,11 +22,13 @@ const bot = createBot({
 bot.loadPlugin(customPVP);
 
 bot.once("spawn", () => {
+    tracker = new EntityTracker(bot);
     console.log("fuck");
 });
 
 bot.on("entitySpawn", async (orgEntityData) => {
     if (orgEntityData.name === "arrow" && target) {
+        console.log(orgEntityData)
         let lastPos = orgEntityData.position;
         let velocity = orgEntityData.velocity;
         let updated;
@@ -34,8 +38,10 @@ bot.on("entitySpawn", async (orgEntityData) => {
             await bot.waitForTicks(1);
             velocity = updated.position.minus(lastPos);
         } while (velocity.equals(emptyVec) && !orgEntityData.position.equals(lastPos));
-        const hit = Shot.fromWeapon({ position: updated.position, velocity }, bot).hitEntityWithPredictionCheck(target, bot.bowpvp.equations.speed);
-        console.log(hit)
+        const speed = tracker!.getEntitySpeed(target)
+        // console.log(velocity)
+        // const hit = Shot.fromWeapon({ position: updated.position, velocity }, bot).hitEntityWithPredictionCheck(target, speed);
+        // console.log(hit)
     }
 });
 
@@ -61,10 +67,11 @@ bot.on("chat", async (username, message) => {
         case "newbowtest":
             target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);
             if (!target) return;
+            tracker!.trackEntity(target)
             bot.bowpvp.attack(target);
             while (true) {
                 await sleep(1200);
-                // console.log(Shot.fromShootingPlayer(bot.entity, bot, "bow").hitEntitiesCheck(target)?.username)
+                console.log(Shot.fromShootingPlayer(bot.entity, bot).hitEntitiesCheck(target)?.username)
             }
             break;
         case "arrowtest":

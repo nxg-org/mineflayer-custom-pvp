@@ -24,7 +24,6 @@ import { InterceptEquations } from "../calc/intercept";
 export type ShotEntity = { position: Vec3; velocity: Vec3; yaw?: number; pitch?: number; heldItem?: Item | null };
 export type EntityAABB = { position: Vec3; height: number; width?: number };
 export type ProjectileMotion = { position: Vec3; velocity: Vec3; gravity?: number };
-export type TrackingData = { [entityId: number]: { tracking: boolean; info: { position: Vec3; velocity: Vec3 }[] } };
 const emptyVec = new Vec3(0, 0, 0);
 
 /**
@@ -91,25 +90,6 @@ export class Shot {
         return new Shot(emptyVec, { position, velocity, gravity: 0.03 }, bot);
     }
 
-    // private async updateEntityPosition(entity: Entity) {
-    //     while (this.trackingData[entity.id].tracking) {
-    //         const firstPos = entity.position.clone()
-    //         await sleep(50);
-    //         if (entity.position !== firstPos) this.trackingData[entity.id].info.push(entity)
-    //     }
-    // }
-
-    // public trackEntity(entity: Entity) {
-    //     this.trackingData[entity.id] ??= { tracking: true, info: [] };
-    //     if (!this.trackingData[entity.id].tracking) this.updateEntityPosition(entity);
-    // }
-
-    // public stopTrackingEntity(entity: Entity, clear: boolean = false) {
-    //     if (!this.trackingData[entity.id]) return;
-    //     this.trackingData[entity.id].tracking = false;
-    //     if (clear) this.trackingData[entity.id].info = [];
-    // }
-
     public canCollisionDetect(): boolean {
         return !!this.interceptCalcs;
     }
@@ -131,17 +111,17 @@ export class Shot {
         return getEntityAABB({ position, height, width }).xzIntersectsRay(this.initialPos, this.initialVel);
     }
 
-    public hitEntitiesCheckXZ(...entities: Entity[]): Entity | null {
-        let sorted = entities.sort((a, b) => a.position.distanceTo(this.initialPos) - b.position.distanceTo(this.initialPos));
-        for (const entity of sorted) {
-            const xzGood = this.XZHitCheck(entity);
-            if (xzGood) return entity;
-        }
-        return null;
+    public hitEntitiesCheckXZ(...entities: Entity[]): Entity[] {
+        return entities
+            .sort((a, b) => a.position.distanceTo(this.initialPos) - b.position.distanceTo(this.initialPos))
+            .filter((e) => this.XZHitCheck(e));
     }
 
+    //TODO: Add a check for piercing from crossbows; if so, check multiple entities.
     public hitEntitiesCheck(...entities: Entity[]): Entity | null {
-        const firstEntity = this.hitEntitiesCheckXZ(...entities);
+        const possibleEntities = this.hitEntitiesCheckXZ(...entities);
+        if (possibleEntities.length === 0) return null;
+        const firstEntity = possibleEntities[0];
         if (firstEntity) {
             const calcShot = this.calculateShotToEntity(firstEntity.position);
             if (!calcShot) return null;
@@ -157,10 +137,13 @@ export class Shot {
     public hitEntityWithPredictionCheck({ position, height, width }: Entity, avgSpeed: Vec3): boolean {
         //Ignore XZ check as we will check two different XZ coords.
         const calcShot = this.calculateShotToEntity(position.offset(0, height / 2, 0));
+        // console.log(position, avgSpeed)
         if (calcShot) {
             const { newTarget } = getPremonition(this.initialPos, position.offset(0, height / 2, 0), avgSpeed, calcShot.totalTicks);
             const calcPredictShot = this.calculateShotToEntity(newTarget, true);
-            return getEntityAABB({ position: newTarget, height, width }).distanceTo(calcPredictShot.closestArrowPoint!) < 0.25;
+            const dist = getEntityAABB({ position: newTarget, height, width }).distanceTo(calcPredictShot.closestArrowPoint!);
+            console.log(dist);
+            return dist < 0.25;
         }
         return false;
     }
