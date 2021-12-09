@@ -3,6 +3,7 @@ import { Entity } from "prismarine-entity";
 import {Block} from "prismarine-block"
 import { Vec3 } from "vec3";
 import { InterceptEquations } from "./intercept";
+import { degreesToRadians, getGrades, getTargetDistance, getTargetYaw, getVo, getVox, getVoy, radiansToDegrees } from "./mathUtilts";
 
 // Physics factors
 let BaseVo: number; // Power of shot
@@ -10,66 +11,16 @@ let GRAVITY = 0.05; // Arrow Gravity // Only for arrow for other entities have d
 let FACTOR_Y = 0.01; // Arrow "Air resistance" // In water must be changed
 let FACTOR_H = 0.01; // Arrow "Air resistance" // In water must be changed
 
-function getTargetDistance(origin: Vec3, destination: Vec3) {
-    const xDistance = Math.pow(origin.x - destination.x, 2);
-    const zDistance = Math.pow(origin.z - destination.z, 2);
-    const hDistance = Math.sqrt(xDistance + zDistance);
-
-    const yDistance = destination.y - origin.y;
-
-    const distance = Math.sqrt(Math.pow(yDistance, 2) + xDistance + zDistance);
-
-    return {
-        distance,
-        hDistance,
-        yDistance,
-    };
-}
-
-function getTargetYaw(origin: Vec3, destination: Vec3) {
-    const xDistance = destination.x - origin.x;
-    const zDistance = destination.z - origin.z;
-    const yaw = Math.atan2(xDistance, zDistance) + Math.PI;
-    return yaw;
-}
-
-function degreesToRadians(degrees: number) {
-    const pi = Math.PI;
-    return degrees * (pi / 180);
-}
-
-function radiansToDegrees(radians: number) {
-    const pi = Math.PI;
-    return radians * (180 / pi);
-}
-
-function getVox(Vo: number, Alfa: number, Resistance = 0) {
-    return Vo * Math.cos(Alfa) - Resistance;
-}
-
-function getVoy(Vo: number, Alfa: number, Resistance = 0) {
-    return Vo * Math.sin(Alfa) - Resistance;
-}
-
-function getVo(Vox: number, Voy: number, G: number) {
-    return Math.sqrt(Math.pow(Vox, 2) + Math.pow(Voy - G, 2)); // New Total Velocity - Gravity
-}
-
-function getGrades(Vo: number, Voy: number, Gravity: number) {
-    return radiansToDegrees(Math.asin((Voy - Gravity) / Vo));
-}
 
 export class CustomHawkEyeEquations {
-    bot: Bot;
-    target?: Entity;
-    speed: any;
-    startPosition?: Vec3;
-    targetPosition?: Vec3;
-    intercept: InterceptEquations;
+    public target?: Entity;
+    public startPosition?: Vec3;
+    public targetPosition?: Vec3;
+    private intercept: InterceptEquations;
 
-    constructor(bot: Bot) {
+    constructor(private bot: Bot) {
         this.bot = bot;
-        this.intercept = new InterceptEquations(this.bot)
+        this.intercept = new InterceptEquations(bot)
     }
 
     // Simulate Arrow Trayectory
@@ -135,6 +86,8 @@ export class CustomHawkEyeEquations {
             }
 
 
+            console.log(Vx, xDestination, Voy, yDestination, Vy)
+            console.log(Vx > xDestination || (Voy < 0 && yDestination > Vy) || !!blockInTrajectory)
 
             // Arrow passed player || Voy (arrow is going down and passed player) || Detected solid block
             if (Vx > xDestination || (Voy < 0 && yDestination > Vy) || !!blockInTrajectory) break;
@@ -219,7 +172,7 @@ export class CustomHawkEyeEquations {
     }
 
 
-    predictShotBetweenTwoEntities(entityFiring: Entity, entityTarget: Entity, speedIn: { x: number; y: number; z: number }, weapon: string = "bow") {
+    predictShotBetweenTwoEntities(entityFiring: Entity, entityTarget: Entity, speedIn: Vec3, weapon: string = "bow") {
         const validWeapons = ["bow", "crossbow", "snowball", "ender_pearl", "egg", "splash_potion", "trident"];
         if (!validWeapons.includes(weapon)) {
             return false
@@ -247,15 +200,7 @@ export class CustomHawkEyeEquations {
                 GRAVITY = 0.03;
                 break;
         }
-        let speed: { x: number; y: number; z: number };
-        if (speedIn == null) {
-            speed = {
-                x: 0,
-                y: 0,
-                z: 0,
-            };
-        } else 
-            speed = speedIn;
+        let speed = speedIn;
 
         let startPosition = entityFiring.position.offset(0, 1.6, 0); // Bow offset position
         let targetPosition = entityTarget.position.offset(0, 0.8, 0);

@@ -1,7 +1,8 @@
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
-import {Vec3} from "vec3";
+import { Vec3 } from "vec3";
 import { InterceptEquations } from "./intercept";
+import { degreesToRadians, getGrades, getPremonition, getTargetDistance, getTargetYaw, getVo, getVox, getVoy } from "./mathUtilts";
 
 // Physics factors
 let BaseVo: number; // Power of shot
@@ -9,76 +10,33 @@ let GRAVITY = 0.05; // Arrow Gravity // Only for arrow for other entities have d
 let FACTOR_Y = 0.01; // Arrow "Air resistance" // In water must be changed
 let FACTOR_H = 0.01; // Arrow "Air resistance" // In water must be changed
 
-function getTargetDistance(origin: any, destination: any) {
-    const xDistance = Math.pow(origin.x - destination.x, 2);
-    const zDistance = Math.pow(origin.z - destination.z, 2);
-    const hDistance = Math.sqrt(xDistance + zDistance);
-
-    const yDistance = destination.y - origin.y;
-
-    const distance = Math.sqrt(Math.pow(yDistance, 2) + xDistance + zDistance);
-
-    return {
-        distance,
-        hDistance,
-        yDistance,
-    };
-}
-
-function getTargetYaw(origin: any, destination: any) {
-    const xDistance = destination.x - origin.x;
-    const zDistance = destination.z - origin.z;
-    const yaw = Math.atan2(xDistance, zDistance) + Math.PI;
-    return yaw;
-}
-
-function degreesToRadians(degrees: any) {
-    const pi = Math.PI;
-    return degrees * (pi / 180);
-}
-
-function radiansToDegrees(radians: any) {
-    const pi = Math.PI;
-    return radians * (180 / pi);
-}
-
-function getVox(Vo: any, Alfa: any, Resistance = 0) {
-    return Vo * Math.cos(Alfa) - Resistance;
-}
-
-function getVoy(Vo: any, Alfa: any, Resistance = 0) {
-    return Vo * Math.sin(Alfa) - Resistance;
-}
-
-function getVo(Vox: any, Voy: any, G: any) {
-    return Math.sqrt(Math.pow(Vox, 2) + Math.pow(Voy - G, 2)); // New Total Velocity - Gravity
-}
-
-function getGrades(Vo: any, Voy: any, Gravity: any) {
-    return radiansToDegrees(Math.asin((Voy - Gravity) / Vo));
-}
-
 export class HawkEyeEquations {
-    bot: Bot;
-    target?: Entity;
-    speed: any;
-    startPosition?: Vec3;
-    targetPosition?: Vec3;
-    intercept: InterceptEquations;
+    public target?: Entity;
+    public speed: Vec3;
+    public startPosition?: Vec3;
+    public targetPosition?: Vec3;
+    private intercept: InterceptEquations;
 
-    constructor(bot: Bot) {
+    constructor(private bot: Bot) {
         this.bot = bot;
-        this.intercept = new InterceptEquations(this.bot)
+        this.speed = new Vec3(0, 0, 0);
+        this.intercept = new InterceptEquations(bot);
     }
 
-
-
-
     // Simulate Arrow Trayectory
-    tryGrade(startPosition: Vec3, targetPosition: Vec3, grade: any, xDestination: any, yDestination: any, VoIn: any, tryIntercetpBlock = false) {
+    tryGrade(
+        startPosition: Vec3,
+        targetPosition: Vec3,
+        grade: any,
+        xDestination: any,
+        yDestination: any,
+        VoIn: any,
+        tryIntercetpBlock = false
+    ) {
         let precisionFactor = 1; // !Danger More precision increse the calc! =>  !More Slower!
 
         let Vo = VoIn;
+        // console.log(Vo)
         let gravity = GRAVITY / precisionFactor;
         let factorY = FACTOR_Y / precisionFactor;
         let factorH = FACTOR_H / precisionFactor;
@@ -188,11 +146,11 @@ export class HawkEyeEquations {
     getFirstGradeAproax(startPosition: Vec3, targetPosition: Vec3, xDestination: any, yDestination: any) {
         let firstFound = false;
         type calcs = {
-            nearestDistance: number,
-            totalTicks: number,
-            blockInTrayect: boolean,
+            nearestDistance: number;
+            totalTicks: number;
+            blockInTrayect: boolean;
             grade: number;
-            arrowTrajectoryPoints: Vec3[],
+            arrowTrajectoryPoints: Vec3[];
         };
         let nearestGradeFirst: calcs | undefined;
         let nearestGradeSecond: calcs | undefined;
@@ -220,7 +178,7 @@ export class HawkEyeEquations {
                 nearestGradeFirst = tryGradeShot;
             }
 
-            if (!nearestGradeSecond || nearestGradeSecond!.nearestDistance > tryGradeShot.nearestDistance && firstFound) {
+            if (!nearestGradeSecond || (nearestGradeSecond!.nearestDistance > tryGradeShot.nearestDistance && firstFound)) {
                 nearestGradeSecond = tryGradeShot;
             }
         }
@@ -231,8 +189,7 @@ export class HawkEyeEquations {
         };
     }
 
-
-    getMasterGrade(targetIn: Entity, speedIn: any, weapon: string) {
+    getMasterGrade(targetIn: Entity, speedIn: Vec3, weapon: string) {
         const validWeapons = ["bow", "crossbow", "snowball", "ender_pearl", "egg", "splash_potion", "trident"];
         if (!validWeapons.includes(weapon)) {
             throw new Error(`${weapon} is not valid weapon for calculate the grade!`);
@@ -260,15 +217,7 @@ export class HawkEyeEquations {
                 break;
         }
         this.target = targetIn;
-        if (speedIn == null) {
-            this.speed = {
-                x: 0,
-                y: 0,
-                z: 0,
-            };
-        } else {
-            this.speed = speedIn;
-        }
+        this.speed = speedIn;
 
         let startPosition = this.bot.entity.position.offset(0, 1.6, 0); // Bow offset position
 
@@ -290,7 +239,7 @@ export class HawkEyeEquations {
         }
 
         // Recalculate the new target based on speed + first trayectory
-        const premonition = this.getPremonition(startPosition, targetPosition, shotCalculation.totalTicks, this.speed);
+        const premonition = getPremonition(startPosition, targetPosition, this.speed, shotCalculation.totalTicks);
         distances = premonition.distances;
         const newTarget = premonition.newTarget;
 
@@ -299,10 +248,15 @@ export class HawkEyeEquations {
         if (!shotCalculation) {
             return false;
         }
-        
-
         // Get more precision on shot
-        const precisionShot = this.getPrecisionShot(startPosition, targetPosition, shotCalculation.grade, distances.hDistance, distances.yDistance, 1);
+        const precisionShot = this.getPrecisionShot(
+            startPosition,
+            targetPosition,
+            shotCalculation.grade,
+            distances.hDistance,
+            distances.yDistance,
+            1
+        );
         const { arrowTrajectoryPoints, blockInTrayect, nearestDistance, nearestGrade } = precisionShot;
 
         // Calculate yaw
@@ -320,21 +274,6 @@ export class HawkEyeEquations {
             target: newTarget,
             arrowTrajectoryPoints,
             blockInTrayect,
-        };
-    }
-
-    getPremonition(startPosition: Vec3, targetPosition: Vec3, totalTicks: any, speed: {x: number, y: number, z: number}) {
-        totalTicks = totalTicks + Math.ceil(totalTicks / 10);
-        const velocity = new Vec3(speed.x, speed.y, speed.z);
-        const newTarget = targetPosition
-        for (let i = 1; i <= totalTicks; i++) {
-            newTarget.add(velocity);
-        }
-        const distances = getTargetDistance(startPosition, newTarget);
-
-        return {
-            distances,
-            newTarget,
         };
     }
 

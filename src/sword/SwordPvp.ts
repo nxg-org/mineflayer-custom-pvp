@@ -1,5 +1,5 @@
 import { Bot } from "mineflayer";
-import { pointToYawAndPitch, toNotchianPitch, toNotchianYaw } from "../calc/conversions";
+import { pointToYawAndPitch, toNotchianPitch, toNotchianYaw } from "../calc/mathUtilts";
 import { Entity } from "prismarine-entity";
 import { Item } from "prismarine-item";
 import { Vec3 } from "vec3";

@@ -1,9 +1,10 @@
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
-import { HawkEyeEquations } from "./calc/hawkEyeEquations";
+import { HawkEyeEquations } from "../calc/hawkEyeEquations";
 import { promisify } from "util";
-import { CustomHawkEyeEquations } from "./calc/customHawkEyeEquations";
-import { toNotchianPitch, toNotchianYaw } from "../calc/conversions";
+import { CustomHawkEyeEquations } from "../calc/customHawkEyeEquations";
+import { toNotchianPitch, toNotchianYaw } from "../calc/mathUtilts";
+import { Vec3 } from "vec3";
 const sleep = promisify(setTimeout);
 
 export class HawkEye {
@@ -19,8 +20,8 @@ export class HawkEye {
     public chargingArrow: boolean;
     public weapon: string = "bow";
     public infoShot: any;
-    private equations: HawkEyeEquations;
-    private customEquations: CustomHawkEyeEquations;
+    public equations: HawkEyeEquations;
+    public customEquations: CustomHawkEyeEquations;
     public detectIncomingShot: boolean;
     public isAimedAt: boolean;
     public isOffHand: boolean;
@@ -135,7 +136,7 @@ export class HawkEye {
         this.target = null;
         this.bot.removeListener("physicsTick", this.getGrades);
         this.bot.removeListener("physicsTick", this.autoCalc);
-        if (this.preparingShot) this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch);
+        if (this.preparingShot) this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch, true);
         this.bot.deactivateItem();
     }
 
@@ -155,18 +156,12 @@ export class HawkEye {
 
         this.prevPlayerPositions.push(position);
 
-        const speed = {
-            x: 0,
-            y: 0,
-            z: 0,
-        };
+        const speed = new Vec3(0, 0, 0)
 
         for (let i = 1; i < this.prevPlayerPositions.length; i++) {
             const pos = this.prevPlayerPositions[i];
             const prevPos = this.prevPlayerPositions[i - 1];
-            speed.x += pos.x - prevPos.x;
-            speed.y += pos.y - prevPos.y;
-            speed.z += pos.z - prevPos.z;
+            speed.offset(pos.x - prevPos.x, pos.y - prevPos.y, pos.z - prevPos.z)
         }
 
         speed.x = speed.x / this.prevPlayerPositions.length;
@@ -185,19 +180,18 @@ export class HawkEye {
 
         this.prevBotPositions.push(position);
 
-        const speed = { x: 0, y: 0, z: 0 };
+        const speed = new Vec3(0, 0, 0);
 
-        for (let i = 1; i < this.prevBotPositions.length; i++) {
-            const pos = this.prevBotPositions[i];
-            const prevPos = this.prevBotPositions[i - 1];
-            speed.x += pos.x - prevPos.x;
-            speed.y += pos.y - prevPos.y;
-            speed.z += pos.z - prevPos.z;
+        for (let i = 1; i < this.prevPlayerPositions.length; i++) {
+            const pos = this.prevPlayerPositions[i];
+            const prevPos = this.prevPlayerPositions[i - 1];
+            speed.offset(pos.x - prevPos.x, pos.y - prevPos.y, pos.z - prevPos.z)
         }
 
-        speed.x = speed.x / this.prevBotPositions.length;
-        speed.y = speed.y / this.prevBotPositions.length;
-        speed.z = speed.z / this.prevBotPositions.length;
+        speed.x = speed.x / this.prevPlayerPositions.length;
+        speed.y = speed.y / this.prevPlayerPositions.length;
+        speed.z = speed.z / this.prevPlayerPositions.length;
+
         return this.customEquations.predictShotBetweenTwoEntities(entity, this.bot.entity, speed, entity.heldItem?.name);
     };
 
@@ -244,9 +238,9 @@ export class HawkEye {
 
         if (this.infoShot) {
             if (this.preparingShot) {
-                this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch);
+                // this.bot.look(this.infoShot.yaw, this.infoShot.pitch)
+                this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch, true);
                 if (["bow", "trident"].includes(this.weapon) && Date.now() - this.preparingShotTime > waitTime) {
-                    this.bot.util.move.forceLook(this.infoShot.yaw, this.infoShot.pitch);
                     // await this.bot.look(this.infoShot.yaw, this.infoShot.pitch, true);
                     this.bot.deactivateItem();
                     this.preparingShot = false;

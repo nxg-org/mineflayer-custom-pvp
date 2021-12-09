@@ -15,7 +15,6 @@ export class InterceptEquations {
         return this.raycast(from, direction, range);
     }
     raycast(from: Vec3, direction: Vec3, range: number) {
-        
         const iterations: (typeof pos)[] = [];
         const iter = new RaycastIterator(from, direction, range);
         let pos = iter.next();
