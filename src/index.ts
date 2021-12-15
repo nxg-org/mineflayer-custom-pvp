@@ -4,7 +4,7 @@ import { EntityTracker } from "./newbow/entityTracker";
 import { SwordPvp } from "./sword/SwordPvp";
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
-import utilPlugin from "@nxg-org/mineflayer-util-plugin";
+import utilPlugin from "../../utilplugin";
 
 declare module "mineflayer" {
     interface Bot {

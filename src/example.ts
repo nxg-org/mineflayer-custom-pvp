@@ -11,6 +11,7 @@ import { ShotPlanner } from "./newbow/shotPlanner";
 const sleep = promisify(setTimeout);
 
 let listenToArrowSpawns = false;
+let shootAtPlayer = false
 let target: Entity | null = null;
 let tracker: EntityTracker | undefined;
 let planner: ShotPlanner | undefined;
@@ -19,31 +20,31 @@ let val = 0;
 
 var fs = require("fs");
 
-// var getUsage = function (cb: any) {
-//     fs.readFile("/proc/" + process.pid + "/stat", function (err: any, data: any) {
-//         var elems = data.toString().split(" ");
-//         var utime = parseInt(elems[13]);
-//         var stime = parseInt(elems[14]);
+var getUsage = function (cb: any) {
+    fs.readFile("/proc/" + process.pid + "/stat", function (err: any, data: any) {
+        var elems = data.toString().split(" ");
+        var utime = parseInt(elems[13]);
+        var stime = parseInt(elems[14]);
 
-//         cb(utime + stime);
-//     });
-// };
+        cb(utime + stime);
+    });
+};
 
-// setInterval(function () {
-//     getUsage(function (startTime: number) {
-//         setTimeout(function () {
-//             getUsage(function (endTime: number) {
-//                 var delta = endTime - startTime;
-//                 var percentage = 100 * (delta / 10000);
+setInterval(function () {
+    getUsage(function (startTime: number) {
+        setTimeout(function () {
+            getUsage(function (endTime: number) {
+                var delta = endTime - startTime;
+                var percentage = 100 * (delta / 10000);
 
-//                 console.log(percentage);
-//                 // if (percentage > 20){
-//                 //     console.log("CPU Usage Over 20%!");
-//                 // }
-//             });
-//         }, 1000);
-//     });
-// }, 100);
+                console.log("percentage:", percentage);
+                // if (percentage > 20){
+                //     console.log("CPU Usage Over 20%!");
+                // }
+            });
+        }, 1000);
+    });
+}, 100);
 
 const emptyVec = new Vec3(0, 0, 0);
 const bot = createBot({
@@ -106,22 +107,27 @@ bot.on("chat", async (username, message) => {
             break;
         case "bowstop":
             bot.bowpvp.stop();
+            shootAtPlayer = false
             break;
         case "swordstop":
             bot.swordpvp.stop();
             break;
         case "newbowtest":
+            shootAtPlayer = true
             target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);
             if (!target) return;
             tracker!.trackEntity(target)
             // bot.bowpvp.attack(target);
             serve();
-            while (true) {
+            while (shootAtPlayer) {
                 await sleep(50);
                 val++;
 
                 // console.log("Called hawkeye", bot.bowpvp.equations.val, "times")
                 const shot = planner?.shotToEntity(target, tracker?.getEntitySpeed(target));
+                for (const entity of Object.values(bot.entities)) {
+                    planner?.shotToEntity(entity)
+                }
                 // console.log(shot)
                 if (shot) {
                     // console.log(shot.yaw, shot.pitch)

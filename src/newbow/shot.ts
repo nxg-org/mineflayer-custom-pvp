@@ -22,7 +22,7 @@ import { trajectoryInfo, airResistance } from "../calc/constants";
 import { getEntityAABB } from "../calc/entityUtils";
 import { promisify } from "util";
 import { InterceptEquations } from "../calc/intercept";
-import { AABB } from "@nxg-org/mineflayer-util-plugin";
+import { AABB } from "../../../utilplugin"
 
 export type ShotEntity = { position: Vec3; velocity: Vec3; yaw?: number; pitch?: number; heldItem?: Item | null };
 export type AABBComponents = { position: Vec3; height: number; width?: number };

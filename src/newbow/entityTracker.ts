@@ -28,8 +28,6 @@ export class EntityTracker {
                 // console.log( this.trackingData[entityId].info.tickInfo)
 
                 this.trackingData[entityId].info.tickInfo.push({ position: entity.position.clone(), velocity: entity.velocity.clone() });
-
-                console.log(entity.velocity)
                 let speed = new Vec3(0, 0, 0);
 
                 for (let i = 1; i < this.trackingData[entityId].info.tickInfo.length; i++) {
