@@ -11,7 +11,7 @@ export class InterceptEquations {
         //old code:
         const range = from.distanceTo(to);
         const direction = to.minus(from).normalize();
-        if (isNaN(range)) return {block: undefined, iterations: []};
+        if (isNaN(range)) return {block: null, iterations: []};
         return this.raycast(from, direction, range);
     }
     raycast(from: Vec3, direction: Vec3, range: number) {
@@ -40,7 +40,7 @@ export class InterceptEquations {
         }
 
         return {
-            block: undefined,
+            block: null,
             iterations,
         };
     }

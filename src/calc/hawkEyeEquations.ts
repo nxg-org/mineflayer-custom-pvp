@@ -9,18 +9,19 @@ let BaseVo: number; // Power of shot
 let GRAVITY = 0.05; // Arrow Gravity // Only for arrow for other entities have different gravity
 let FACTOR_Y = 0.01; // Arrow "Air resistance" // In water must be changed
 let FACTOR_H = 0.01; // Arrow "Air resistance" // In water must be changed
-
 export class HawkEyeEquations {
     public target?: Entity;
     public speed: Vec3;
     public startPosition?: Vec3;
     public targetPosition?: Vec3;
     private intercept: InterceptEquations;
+    public val = 0
 
     constructor(private bot: Bot) {
         this.bot = bot;
         this.speed = new Vec3(0, 0, 0);
         this.intercept = new InterceptEquations(bot);
+        this.val = 0;
     }
 
     // Simulate Arrow Trayectory
@@ -31,10 +32,10 @@ export class HawkEyeEquations {
         xDestination: any,
         yDestination: any,
         VoIn: any,
-        tryIntercetpBlock = false
+        tryIntercetpBlock = false,
     ) {
+        this.val++;
         let precisionFactor = 1; // !Danger More precision increse the calc! =>  !More Slower!
-
         let Vo = VoIn;
         // console.log(Vo)
         let gravity = GRAVITY / precisionFactor;
@@ -51,11 +52,11 @@ export class HawkEyeEquations {
 
         let nearestDistance: any = false;
         let totalTicks = 0;
+        // const log = []
 
         let blockInTrayect = false;
         const arrowTrajectoryPoints = [];
         const yaw = getTargetYaw(startPosition, targetPosition);
-
         while (true) {
             const firstDistance = Math.sqrt(Math.pow(Vy - yDestination, 2) + Math.pow(Vx - xDestination, 2));
 
@@ -95,6 +96,7 @@ export class HawkEyeEquations {
             const y = startPosition.y + Vy;
 
             const currentArrowPosition = new Vec3(x, y, z);
+            // log.push(`HIT SHOT: Tick: ${totalTicks.toFixed(2)} Pos: ${currentArrowPosition} dx: ${(Math.sin(yaw) * Vox).toFixed(4)} dy: ${Voy.toFixed(4)} dz: ${(Math.cos(yaw) * Vox).toFixed(4)} `)
             arrowTrajectoryPoints.push(currentArrowPosition);
             const previusArrowPositionIntercept =
                 arrowTrajectoryPoints[arrowTrajectoryPoints.length === 1 ? 0 : arrowTrajectoryPoints.length - 2];
@@ -110,17 +112,19 @@ export class HawkEyeEquations {
                     blockInTrayect: blockInTrayect,
                     grade: 0,
                     arrowTrajectoryPoints,
+                    // log
                 };
             }
         }
     }
 
     // Get more precision on shot
-    getPrecisionShot(startPosition: Vec3, targetPosition: Vec3, grade: any, xDestination: any, yDestination: any, decimals: any) {
+    getPrecisionShot(startPosition: Vec3, targetPosition: Vec3, grade: number, xDestination: number, yDestination: number, decimals: number) {
         let nearestDistance: any = false;
         let nearestGrade: any = false;
         let arrowTrajectoryPoints, blockInTrayect;
         decimals = Math.pow(10, decimals);
+        // let log: string[] = []
 
         for (let iGrade = grade * 10 - 10; iGrade <= grade * 10 + 10; iGrade += 1) {
             const distance = this.tryGrade(startPosition, targetPosition, iGrade / decimals, xDestination, yDestination, BaseVo, true);
@@ -129,6 +133,7 @@ export class HawkEyeEquations {
                 nearestGrade = iGrade;
                 arrowTrajectoryPoints = distance.arrowTrajectoryPoints;
                 blockInTrayect = distance.blockInTrayect;
+                // log = distance.log
             }
         }
 
@@ -137,6 +142,7 @@ export class HawkEyeEquations {
             nearestDistance,
             arrowTrajectoryPoints,
             blockInTrayect,
+            // log
         };
     }
 
@@ -219,12 +225,12 @@ export class HawkEyeEquations {
         this.target = targetIn;
         this.speed = speedIn;
 
-        let startPosition = this.bot.entity.position.offset(0, 1.6, 0); // Bow offset position
+        let startPosition = this.bot.entity.position.offset(0, 1.62, 0); // Bow offset position
 
         // Calculate target Height, for shot in the heart  =P
         let targetHeight = 0;
         if (this.target?.type === "player") {
-            targetHeight = 1.6;
+            targetHeight =  1.8 / 2;
         }
         if (this.target?.type === "mob") {
             targetHeight = this.target.height;
@@ -235,7 +241,7 @@ export class HawkEyeEquations {
         let distances = getTargetDistance(startPosition, targetPosition);
         let shotCalculation = this.getBaseCalculation(startPosition, targetPosition, distances.hDistance, distances.yDistance);
         if (!shotCalculation) {
-            return false;
+            return null;
         }
 
         // Recalculate the new target based on speed + first trayectory
@@ -246,7 +252,7 @@ export class HawkEyeEquations {
         // Recalculate the trayectory based on new target location
         shotCalculation = this.getBaseCalculation(startPosition, targetPosition, distances.hDistance, distances.yDistance);
         if (!shotCalculation) {
-            return false;
+            return null;
         }
 
         // Get more precision on shot
@@ -266,6 +272,8 @@ export class HawkEyeEquations {
         if (nearestDistance > 4) {
             return false;
         } // Too far
+
+        // console.log(log)
         // console.log("bot to player shot",shotCalculation.grade, "nearest distance",nearestDistance)
         return {
             pitch: degreesToRadians(nearestGrade / 10),

@@ -2,6 +2,7 @@ import { Entity } from "prismarine-entity";
 import { Bot } from "mineflayer";
 import { promisify } from "util";
 import { Vec3 } from "vec3";
+import { dirToYawAndPitch } from "../calc/mathUtilts";
 
 const sleep = promisify(setTimeout);
 const emptyVec = new Vec3(0, 0, 0);
@@ -15,22 +16,28 @@ export class EntityTracker {
 
     constructor(private bot: Bot) {
         bot.on("physicsTick", () => {
-            for (let entityId in this.trackingData) {
+            for (const entityId in this.trackingData) {
                 if (!this.trackingData[entityId].tracking) continue;
-                const entity = Object.values(bot.entities).find((e) => e.id.toString() === entityId);
+                const entity = bot.entities[entityId];
                 if (!entity) continue;
+
                 if (this.trackingData[entityId].info.tickInfo.length > 10) {
                     this.trackingData[entityId].info.tickInfo.shift();
                 }
 
+                // console.log( this.trackingData[entityId].info.tickInfo)
+
                 this.trackingData[entityId].info.tickInfo.push({ position: entity.position.clone(), velocity: entity.velocity.clone() });
 
+                console.log(entity.velocity)
                 let speed = new Vec3(0, 0, 0);
 
                 for (let i = 1; i < this.trackingData[entityId].info.tickInfo.length; i++) {
                     const pos = this.trackingData[entityId].info.tickInfo[i].position;
                     const prevPos = this.trackingData[entityId].info.tickInfo[i - 1].position;
                     speed.x += pos.x - prevPos.x;
+                    const yShift = pos.y - prevPos.y
+                    if (yShift > 0.4 || yShift < -0.5) 
                     speed.y += pos.y - prevPos.y;
                     speed.z += pos.z - prevPos.z;
                 }
@@ -38,6 +45,7 @@ export class EntityTracker {
                 speed.x = speed.x / this.trackingData[entityId].info.tickInfo.length;
                 speed.y = speed.y / this.trackingData[entityId].info.tickInfo.length;
                 speed.z = speed.z / this.trackingData[entityId].info.tickInfo.length;
+
                 if (speed !== this.trackingData[entityId].info.avgSpeed) this.trackingData[entityId].info.avgSpeed = speed;
             }
         });

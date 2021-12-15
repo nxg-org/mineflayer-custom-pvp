@@ -24,7 +24,7 @@ export class InterceptEquations {
         let checkIterations: any;
         from = positions[0];
 
-        for (let i = 1; i <= positions.length; i++) {
+        for (let i = 1; i <= positions.length - 1; i++) {
             to = positions[i];
             checkIterations = this.check(from, to);
             if (!checkIterations.block) {
@@ -41,10 +41,11 @@ export class InterceptEquations {
         const iter = new RaycastIterator(from, direction, range);
         let pos = iter.next();
         while (pos) {
-            iterations.push(pos);
-            const block = this.bot.blockAt(pos);
+            const position = new Vec3(pos.x, pos.y, pos.z);
+            iterations.push(position);
+            const block = this.bot.blockAt(position);
             if (block) {
-                const intersect = iter.intersect(block.shapes, pos);
+                const intersect = iter.intersect(block.shapes, position);
                 if (intersect) {
                     return {
                         block,
@@ -56,7 +57,7 @@ export class InterceptEquations {
         }
 
         return {
-            block: undefined,
+            block: null,
             iterations,
         };
     }

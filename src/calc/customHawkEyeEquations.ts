@@ -42,7 +42,7 @@ export class CustomHawkEyeEquations {
         let nearestDistance = Math.sqrt(Math.pow(Vy - yDestination, 2) + Math.pow(Vx - xDestination, 2));
         let totalTicks = 0;
 
-        let blockInTrajectory: Block | undefined;
+        let blockInTrajectory: Block | null = null;
         let closestArrowPoint: Vec3 | undefined;
         const arrowTrajectoryPoints = [];
 

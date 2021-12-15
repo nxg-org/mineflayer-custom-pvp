@@ -119,6 +119,30 @@ export function getGrades(Vo: number, Voy: number, Gravity: number) {
     return radiansToDegrees(Math.asin((Voy - Gravity) / Vo));
 }
 
-export function vectorMagnitude(vec: Vec3) {
+export function vectorMagnitude(vec: Vec3): number {
     return Math.sqrt(vec.x * vec.x + vec.z * vec.z);
+}
+
+export function VoToVox(vec: Vec3, mag?: number): number {    
+    return mag ? Math.sqrt(mag * mag - vec.y * vec.y) : Math.sqrt(Math.pow(vectorMagnitude(vec), 2) - vec.y * vec.y);
+}
+
+// TODO: make it not throw NaN.
+export function notchianVel(vec: Vec3, Vo?: number, Vox?: number): {Vo: number, Vox: number, vel: Vec3} {
+    if (Vo && Vox) {
+        return {Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo))}
+    } else if (Vo) {
+        const Vox = VoToVox(vec, Vo)
+        return {Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo))}
+    } else {
+        // console.log(vec)
+        const Vo = vectorMagnitude(vec)
+        const Vox = VoToVox(vec)
+        // console.log(Math.pow(Vo, 2), vec.y * vec.y)
+        return {Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo))}
+    }
+}
+
+export function applyVec3Gravity(currentVel: Vec3, gravity: Vec3) {
+    return currentVel.plus(gravity);
 }
