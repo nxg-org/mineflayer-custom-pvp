@@ -58,7 +58,7 @@ bot.loadPlugin(customPVP);
 bot.once("spawn", () => {
     tracker = new EntityTracker(bot);
     intercepter = new InterceptEquations(bot);
-    planner = new ShotPlanner(bot, tracker, intercepter);
+    planner = new ShotPlanner(bot);
     console.log("fuck");
 });
 
@@ -125,10 +125,9 @@ bot.on("chat", async (username, message) => {
 
                 // console.log("Called hawkeye", bot.bowpvp.equations.val, "times")
                 const shot = planner?.shotToEntity(target, tracker?.getEntitySpeed(target));
-                for (const entity of Object.values(bot.entities)) {
-                    planner?.shotToEntity(entity)
-                }
-                // console.log(shot)
+                // for (const entity of Object.values(bot.entities)) {
+                //     planner?.shotToEntity(entity)
+                // }
                 if (shot) {
                     // console.log(shot.yaw, shot.pitch)
                     bot.look(shot.yaw, shot.pitch);
