@@ -65,7 +65,7 @@ export class EntityTracker {
         }
     }
 
-    public getEntitySpeed(entity: Entity) {
+    public getEntitySpeed(entity: Entity): Vec3 {
         return this.trackingData[entity.id].info.avgSpeed;
     }
 

@@ -51,6 +51,12 @@ export function dirToYawAndPitch(dir: Vec3) {
     return { yaw: yaw, pitch: pitch };
 }
 
+export function yawPitchAndSpeedToDir(yaw: number, pitch: number, speed: number) {
+    const thetaY = Math.PI + yaw;
+    const thetaP = pitch;
+    return new Vec3(speed * Math.sin(thetaY), speed * Math.sin(thetaP), speed * Math.cos(thetaY));
+}
+
 export function getTargetDistance(origin: Vec3, destination: Vec3) {
     const xDistance = Math.pow(origin.x - destination.x, 2);
     const zDistance = Math.pow(origin.z - destination.z, 2);
@@ -119,19 +125,6 @@ export function vectorMagnitude(vec: Vec3): number {
 
 export function VoToVox(vec: Vec3, mag?: number): number {    
     return mag ? Math.sqrt(mag * mag - vec.y * vec.y) : Math.sqrt(Math.pow(vectorMagnitude(vec), 2) - vec.y * vec.y);
-}
-
-//Scuffed.
-export function yawPitchAndSpeedToDir(yaw: number, pitch: number, speed: number) {
-    const thetaY = Math.PI + yaw;
-    const thetaP = pitch;
-    const x = speed * Math.sin(thetaY)
-    const y = speed * Math.sin(thetaP)
-    const z = speed * Math.cos(thetaY)
-    const VxMag = Math.sqrt(x * x + z * z)
-    const VxRatio = Math.sqrt(VxMag * VxMag - y * y)
-    const allRatio = VxRatio / VxMag
-    return new Vec3(x * allRatio, y, z * allRatio);
 }
 
 // TODO: make it not throw NaN.

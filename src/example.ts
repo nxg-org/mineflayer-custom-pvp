@@ -13,9 +13,6 @@ const sleep = promisify(setTimeout);
 let listenToArrowSpawns = false;
 let shootAtPlayer = false
 let target: Entity | null = null;
-let tracker: EntityTracker | undefined;
-let planner: ShotPlanner | undefined;
-let intercepter: InterceptEquations | undefined;
 let val = 0;
 
 var fs = require("fs");
@@ -38,9 +35,6 @@ setInterval(function () {
                 var percentage = 100 * (delta / 10000);
 
                 console.log("percentage:", percentage);
-                // if (percentage > 20){
-                //     console.log("CPU Usage Over 20%!");
-                // }
             });
         }, 1000);
     });
@@ -56,41 +50,33 @@ const bot = createBot({
 bot.loadPlugin(customPVP);
 
 bot.once("spawn", () => {
-    tracker = new EntityTracker(bot);
-    intercepter = new InterceptEquations(bot);
-    planner = new ShotPlanner(bot);
     console.log("fuck");
 });
 
+let intercepter = new InterceptEquations(bot);
+
+//awkward handling due to lack of velocity support from entities.
 bot.on("entitySpawn", async (orgEntityData) => {
     if (orgEntityData.name === "arrow" && target) {
         let updated;
-        // for (let i = 0; i < 3; i++) {
-        //     updated = bot.nearestEntity((e) => e.id === orgEntityData.id)!;
-        //     console.log(updated?.position, updated?.velocity)
-        //     await bot.waitForTicks(1);
-        // }
-        // let lastPos = orgEntityData.position;
-        // let velocity = orgEntityData.velocity;
-        // do {
-        //     updated = bot.nearestEntity((e) => e.id === orgEntityData.id)!;
-        //     lastPos = updated.position.clone();
-        //     await bot.waitForTicks(1);
-        //     velocity = updated.position.minus(lastPos);
-        // } while (velocity.equals(emptyVec) && !orgEntityData.position.equals(lastPos));
-        // const speed = tracker!.getEntitySpeed(target)
-        // console.log(velocity)
-        // const hit = Shot.fromWeapon({ position: updated.position, velocity }, bot).hitEntityWithPredictionCheck(target, speed);
-        // console.log(hit)
+        for (let i = 0; i < 3; i++) {
+            updated = bot.nearestEntity((e) => e.id === orgEntityData.id)!;
+            await bot.waitForTicks(1);
+        }
+        let lastPos = orgEntityData.position;
+        let velocity = orgEntityData.velocity;
+        do {
+            updated = bot.nearestEntity((e) => e.id === orgEntityData.id)!;
+            lastPos = updated.position.clone();
+            await bot.waitForTicks(1);
+            velocity = updated.position.minus(lastPos);
+        } while (velocity.equals(emptyVec) && !orgEntityData.position.equals(lastPos));
+        const speed = bot.newbowpvp.tracker.getEntitySpeed(target)
+        const hit = Shot.fromWeapon({ position: updated.position, velocity }, intercepter).hitEntityWithPredictionCheck(target, speed);
+        console.log(velocity, hit)
     }
 });
 
-async function serve() {
-    while (true) {
-        await sleep(1000);
-        console.log("Called val", val, "times");
-    }
-}
 
 bot.on("chat", async (username, message) => {
     const split = message.split(" ");
@@ -106,7 +92,7 @@ bot.on("chat", async (username, message) => {
             bot.swordpvp.attack(target);
             break;
         case "bowstop":
-            bot.bowpvp.stop();
+            bot.newbowpvp.stop();
             shootAtPlayer = false
             break;
         case "swordstop":
@@ -116,26 +102,8 @@ bot.on("chat", async (username, message) => {
             shootAtPlayer = true
             target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);
             if (!target) return;
-            tracker!.trackEntity(target)
-            // bot.bowpvp.attack(target);
-            serve();
-            while (shootAtPlayer) {
-                await sleep(50);
-                val++;
-
-                // console.log("Called hawkeye", bot.bowpvp.equations.val, "times")
-                const shot = planner?.shotToEntity(target, tracker?.getEntitySpeed(target));
-                // for (const entity of Object.values(bot.entities)) {
-                //     planner?.shotToEntity(entity)
-                // }
-                if (shot) {
-                    // console.log(shot.yaw, shot.pitch)
-                    bot.look(shot.yaw, shot.pitch);
-                    if (!bot.bowpvp.preparingShot) {
-                        bot.bowpvp.simplyShot(shot.yaw, shot.pitch)
-                    }
-                }
-            }
+            bot.newbowpvp.tracker.trackEntity(target)
+            bot.newbowpvp.attack(target, "crossbow");
             break;
         case "arrowtest":
             listenToArrowSpawns = true;

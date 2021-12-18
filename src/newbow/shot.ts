@@ -22,12 +22,18 @@ import { trajectoryInfo, airResistance } from "../calc/constants";
 import { getEntityAABB } from "../calc/entityUtils";
 import { promisify } from "util";
 import { InterceptEquations } from "../calc/intercept";
-import { AABB } from "../../../utilplugin"
+import { AABB } from "../../../utilplugin";
 
 export type ShotEntity = { position: Vec3; velocity: Vec3; yaw?: number; pitch?: number; heldItem?: Item | null };
 export type AABBComponents = { position: Vec3; height: number; width?: number };
 export type ProjectileMotion = { position: Vec3; velocity: Vec3; gravity?: number };
-export type BasicShotInfo = { nearestDistance: number; blockingBlock: Block | null; intersectPos: Vec3 | null; closestPoint: Vec3 | null, totalTicks: number };
+export type BasicShotInfo = {
+    nearestDistance: number;
+    blockingBlock: Block | null;
+    intersectPos: Vec3 | null;
+    closestPoint: Vec3 | null;
+    totalTicks: number;
+};
 const emptyVec = new Vec3(0, 0, 0);
 
 /**
@@ -38,6 +44,8 @@ const emptyVec = new Vec3(0, 0, 0);
  * TODO: Completely rewrite arrow trajectory calculation. Currently using assumptions, can be much better.
  * ! It is very fast; I will have to optimize even more.
  * * DONE! WOOOOOOOOOO
+ *
+ * TODO: Work on caching arrow trajectories. This will speed up repeated look-ups and encourage reuse of classes to save RAM/CPU.
  *
  */
 
@@ -66,7 +74,11 @@ export class Shot {
     public interceptCalcs?: InterceptEquations;
     public blockCheck: boolean = false;
 
-    constructor(originVel: Vec3, { position: pPos, velocity: pVel, gravity }: Required<ProjectileMotion>, bot?: Bot) {
+    constructor(
+        originVel: Vec3,
+        { position: pPos, velocity: pVel, gravity }: Required<ProjectileMotion>,
+        interceptCalcs?: InterceptEquations
+    ) {
         const { yaw, pitch } = dirToYawAndPitch(pVel);
         this.initialPos = pPos.clone();
         this.initialVel = pVel.clone().add(originVel);
@@ -75,26 +87,30 @@ export class Shot {
         this.initialPitch = pitch;
         this.points = [];
         this.pointVelocities = [];
-        if (bot) this.interceptCalcs = new InterceptEquations(bot);
+        this.interceptCalcs = interceptCalcs;
     }
 
     // TODO: With yaw, pitch, and scalar speed, calculate velocity.
-    static fromShootingPlayer({ position, yaw, pitch, velocity, heldItem }: ShotEntity, bot?: Bot, weapon?: string): Shot {
-        const { v0, g } = trajectoryInfo[weapon! ?? heldItem?.name];
-        if (v0 && g) {
-            const projVel = yawPitchAndSpeedToDir(yaw!, pitch!, v0);
-            return new Shot(emptyVec, { position: position.offset(0, 1.62, 0), velocity: projVel, gravity: g }, bot);
+    static fromShootingPlayer(
+        { position, yaw, pitch, velocity, heldItem }: ShotEntity,
+        interceptCalcs: InterceptEquations,
+        weapon?: string
+    ): Shot {
+        const info = trajectoryInfo[weapon! ?? heldItem?.name];
+        if (!!info) {
+            const projVel = yawPitchAndSpeedToDir(yaw!, pitch!, info.v0);
+            return new Shot(velocity, { position: position.offset(0, 1.62, 0), velocity: projVel, gravity: info.g }, interceptCalcs);
         } else {
             throw "Invalid weapon";
         }
     }
 
-    static fromWeapon({ position, velocity }: ProjectileMotion, bot?: Bot): Shot {
-        return new Shot(emptyVec, { position, velocity, gravity: 0.05 }, bot);
+    static fromWeapon({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptEquations): Shot {
+        return new Shot(emptyVec, { position, velocity, gravity: 0.05 }, interceptCalcs);
     }
 
-    static fromOther({ position, velocity }: ProjectileMotion, bot?: Bot): Shot {
-        return new Shot(emptyVec, { position, velocity, gravity: 0.03 }, bot);
+    static fromOther({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptEquations): Shot {
+        return new Shot(emptyVec, { position, velocity, gravity: 0.03 }, interceptCalcs);
     }
 
     public canCollisionDetect(): boolean {
@@ -125,31 +141,34 @@ export class Shot {
     }
 
     private aabbHitCheckXZ(...aabbs: AABBComponents[] | AABB[]) {
-        if (!(aabbs instanceof AABB)) aabbs = (aabbs as AABBComponents[]).map(getEntityAABB)
+        if (!(aabbs instanceof AABB)) aabbs = (aabbs as AABBComponents[]).map(getEntityAABB);
         return (aabbs as AABB[])
             .sort((a, b) => a.xzDistanceTo(this.initialPos) - b.xzDistanceTo(this.initialPos))
-            .filter(box => !!box.xzIntersectsRay(this.initialPos, this.initialVel))
+            .filter((box) => !!box.xzIntersectsRay(this.initialPos, this.initialVel));
     }
 
     //TODO: Add a check for piercing from crossbows; if so, check multiple entities.
     //* Partially done? Now yields.
     public hitEntitiesCheck(...entities: AABBComponents[]) {
-        let shots = []
+        let shots = [];
         const possibleEntities = this.aabbHitCheckXZ(...entities);
         for (const entity of possibleEntities) {
             if (entity) {
                 const shotInfo = this.newCalcToEntity(entity);
-                if (shotInfo.intersectPos) shots.push({entity: entity, shotInfo: shotInfo});
+                if (shotInfo.intersectPos) shots.push({ entity: entity, shotInfo: shotInfo });
             }
         }
         return shots;
     }
 
-    public hitsEntity(entity: AABBComponents, extras: {yawChecked: boolean, blockCheck: boolean} = {yawChecked: false, blockCheck: true}): BasicShotInfo | null {
+    public hitsEntity(
+        entity: AABBComponents,
+        extras: { yawChecked: boolean; blockCheck: boolean } = { yawChecked: false, blockCheck: true }
+    ): BasicShotInfo | null {
         if (extras.yawChecked) {
-            return this.newCalcToEntity(entity, extras.blockCheck)
+            return this.newCalcToEntity(entity, extras.blockCheck);
         } else {
-            return this.hitEntitiesCheck(entity)[0].shotInfo ?? null
+            return this.hitEntitiesCheck(entity)[0].shotInfo ?? null;
         }
     }
 
@@ -157,12 +176,15 @@ export class Shot {
         //Ignore XZ check as we will check two different XZ coords.
         const calcShot = this.newCalcToEntity({ position, height, width });
         if (!calcShot.intersectPos) return false;
-        position.add(avgSpeed.clone().scale(calcShot.totalTicks));
-        const { newTarget } = getPremonition(this.initialPos, position.offset(0, height / 2, 0), avgSpeed, calcShot.totalTicks);
-        const calcPredictShot = this.calculateShotToEntity(newTarget, true);
-        const dist = getEntityAABB({ position: newTarget, height, width }).distanceTo(calcPredictShot.closestArrowPoint!);
-        console.log(dist);
-        return dist < 0.25;
+        const { newTarget } = getPremonition(
+            this.initialPos,
+            position.clone().add(avgSpeed.clone().scale(calcShot.totalTicks)),
+            avgSpeed,
+            calcShot.totalTicks
+        );
+        const newAABB = getEntityAABB({ position: newTarget, height, width });
+        const calcPredictShot = this.newCalcToEntity(newAABB, true);
+        return !!calcPredictShot.intersectPos;
     }
 
     public checkForEntityHitFromSortedPoints(
@@ -205,8 +227,8 @@ export class Shot {
         gravity: number,
         blockChecker?: InterceptEquations,
         blockChecking: boolean = false
-    ): {positions: Vec3[], velocities: Vec3[], blockHit: Block | null} {
-        rawVelocity = notchianVel(rawVelocity).vel;
+    ): { positions: Vec3[]; velocities: Vec3[]; blockHit: Block | null } {
+        // rawVelocity = notchianVel(rawVelocity).vel
         let points: Vec3[] = [];
         let pointVelocities: Vec3[] = [];
         let block: Block | null = null;
@@ -247,8 +269,8 @@ export class Shot {
         gravity: number,
         blockChecker?: InterceptEquations,
         blockChecking: boolean = false
-    ): {positions: Vec3[], velocities: Vec3[], blockHit: Block | null} {
-        rawVelocity = notchianVel(rawVelocity).vel;
+    ): { positions: Vec3[]; velocities: Vec3[]; blockHit: Block | null } {
+        // rawVelocity = notchianVel(rawVelocity).vel;
         let points: Vec3[] = [];
         let pointVelocities: Vec3[] = [];
         let block: Block | null = null;
@@ -285,12 +307,12 @@ export class Shot {
 
     //TODO: Optimize. More accurate than hawkeye's, but anywhere from 1.5x to 7x as expensive.
     public newCalcToEntity(target: AABBComponents | AABB, blockChecking: boolean = false): BasicShotInfo {
-        if (!(target instanceof AABB)) target = getEntityAABB(target)
-        
+        if (!(target instanceof AABB)) target = getEntityAABB(target);
+        target.extend(0, 0.18, 0);
         // height = height = 1.62 ? height + 0.18 : 0;
         const entityAABB = target;
         let currentPosition = this.initialPos.clone();
-        let currentVelocity = notchianVel(this.initialVel.clone()).vel;
+        let currentVelocity = this.initialVel.clone();
         let perTickVel = currentVelocity.clone();
         let nearestDistance = entityAABB.distanceTo(currentPosition);
         let nextPosition = currentPosition.clone().add(currentVelocity);
@@ -302,12 +324,11 @@ export class Shot {
         let totalTicks = 0;
         let gravity = this.gravity;
         let offsetX: number = -perTickVel.x * airResistance.h;
-        let offsetY: number =  -perTickVel.y * airResistance.y - gravity;
+        let offsetY: number = -perTickVel.y * airResistance.y - gravity;
         let offsetZ: number = -perTickVel.z * airResistance.h;
 
         const entityDist = target.xzDistanceTo(this.initialPos);
         while (totalTicks < 150) {
-            // console.log(`Tick: ${totalTicks.toFixed(2)} Pos: ${currentPosition} dx: ${perTickVel.x.toFixed(4)} dy: ${perTickVel.y.toFixed(4)} dz: ${perTickVel.z.toFixed(4)} `)
             const testDist = entityAABB.distanceTo(currentPosition);
             if (nearestDistance !== testDist) {
                 if (nearestDistance > 6) {
@@ -327,19 +348,21 @@ export class Shot {
 
             if (nearestDistance > testDist) {
                 nearestDistance = testDist;
-                closestPoint = currentPosition
+                closestPoint = currentPosition;
             }
+
             if (blockChecking && this.interceptCalcs) {
                 blockingBlock = this.interceptCalcs.check(currentPosition, nextPosition)?.block;
-                if (blockingBlock) break;
             }
 
             intersectPos = entityAABB.intersectsSegment(currentPosition, nextPosition);
             if (intersectPos) {
                 nearestDistance = 0;
-                closestPoint = intersectPos
+                closestPoint = intersectPos;
                 break;
             }
+
+            if (blockingBlock) break;
 
             currentDist = currentPosition.xzDistanceTo(this.initialPos);
             if (currentDist > entityDist || (currentVelocity.y < 0 && currentPosition.y - target.minY < 0)) break;

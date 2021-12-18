@@ -153,3 +153,22 @@ export function notchianVel(vec: Vec3, Vo?: number, Vox?: number): {Vo: number, 
 export function applyVec3Gravity(currentVel: Vec3, gravity: Vec3) {
     return currentVel.plus(gravity);
 }
+
+
+
+// (() => {
+//     let testYaw = 5.34
+//     let testPitch = 1.33
+//     let testSpeed = 3
+//     let testVec = yawPitchAndSpeedToDir(testYaw, testPitch, testSpeed)
+//     let oldVec = notchianVel(OldyawPitchAndSpeedToDir(testYaw, testPitch, testSpeed)).vel
+//     console.log(testVec, oldVec)
+    // let notchVec = notchianVel(testVec)
+    // console.log(notchVec)
+    // Vec3 {
+    //     x: 0.5790909162892935,
+    //     y: 2.9134451337631337,
+    //     z: -0.42010851362849355
+    //   }
+
+// })()

@@ -15,9 +15,21 @@ const PIOver3 = Math.PI / 3;
 
 type pitchAndTicks = { pitch: number; ticks: number };
 type CheckShotInfo = { yaw: number; pitch: number; ticks: number; shift?: boolean };
-type CheckedShot = { hit: boolean; yaw: number; pitch: number; ticks: number; shotInfo: BasicShotInfo | null };
+export type CheckedShot = { hit: boolean; yaw: number; pitch: number; ticks: number; shotInfo: BasicShotInfo | null };
 export class ShotPlanner {
-    constructor(private bot: Bot) {}
+    private intercepter: InterceptEquations;
+    private tracker: EntityTracker;
+    constructor(private bot: Bot) {
+        this.intercepter = new InterceptEquations(bot);
+        this.tracker = new EntityTracker(bot);
+        bot.once("spawn", () => this.tracker.trackEntity(this.bot.entity))
+
+
+    }
+
+    public get originVel(): Vec3 {
+        return this.tracker.getEntitySpeed(this.bot.entity)
+    }
 
     /**
      * Better optimization. Still about 5x more expensive than hawkeye (no clue what I did) but its more accurate so whatever.
@@ -67,8 +79,8 @@ export class ShotPlanner {
     public checkForBlockIntercepts(target: AABBComponents, ...shots: CheckShotInfo[]): CheckedShot {
         for (const { pitch, ticks, yaw } of shots) {
             const initShot = Shot.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: emptyVec, heldItem: this.bot.entity.heldItem },
-                this.bot
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel, heldItem: this.bot.entity.heldItem },
+                this.intercepter
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: true })!;
             if (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2))
@@ -85,8 +97,8 @@ export class ShotPlanner {
 
         for (let pitch = minPitch + dv; pitch < PIOver2; pitch += dv) {
             const initShot = Shot.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: emptyVec, heldItem: this.bot.entity.heldItem },
-                this.bot
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel, heldItem: this.bot.entity.heldItem },
+                this.intercepter
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false })!;
             if (!shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2)) {
@@ -119,8 +131,8 @@ export class ShotPlanner {
 
         for (let pitch = -PIOver2; pitch < PIOver2; pitch += dv) {
             const initShot = Shot.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: emptyVec, heldItem: this.bot.entity.heldItem },
-                this.bot
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel, heldItem: this.bot.entity.heldItem },
+                this.intercepter
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false });
             if (!shot) continue;
