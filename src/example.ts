@@ -49,8 +49,11 @@ const bot = createBot({
 
 bot.loadPlugin(customPVP);
 
+
 bot.once("spawn", () => {
     console.log("fuck");
+    bot.swordpvp.critConfig.mode = "packet"
+    bot.bowpvp.useOffhand = true
 });
 
 let intercepter = new InterceptEquations(bot);

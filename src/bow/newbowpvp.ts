@@ -157,6 +157,7 @@ export class BowPVP {
         const hasWeapon = await this.checkForWeapon(weapon);
         if (!hasWeapon) this.stop();
         if (weapon) this.weapon = weapon
+        this.planner.weapon = this.weapon
         this.tracker.trackEntity(target);
         this.bot.on("physicsTick", this.getShotInfo);
         this.bot.on("physicsTick", this.chargeHandling);
@@ -180,7 +181,7 @@ export class BowPVP {
         this.shotCharging = true;
         this.shotInit = performance.now();
         
-        this.bot.activateItem();
+        this.bot.activateItem(this.useOffhand);
         while (!this.shotReady) await sleep(0);
         this.bot.deactivateItem();
         
@@ -190,7 +191,6 @@ export class BowPVP {
     private getShotInfo = async () => {
         if (!this.target) return;
         this.shotInfo = this.shotToEntity(this.target, this.tracker.getEntitySpeed(this.target));
-        // console.log(this.shotInfo)
     };
 
 
@@ -227,7 +227,7 @@ export class BowPVP {
 
         if (!this.shotCharging) {
             if (["bow", "crossbow", "trident"].includes(this.weapon)) {
-                this.bot.activateItem();
+                this.bot.activateItem(this.useOffhand);
             }
             this.shotCharging = true;
             this.shotInit = performance.now();
@@ -243,7 +243,7 @@ export class BowPVP {
 
                 if (["snowball", "ender_pearl", "egg", "splash_potion"].includes(this.weapon)) {
                     this.bot.swingArm(undefined);
-                    this.bot.activateItem();
+                    this.bot.activateItem(this.useOffhand);
                     this.bot.deactivateItem();
                     this.shotCharging = false;
                 }
@@ -257,7 +257,7 @@ export class BowPVP {
 
     private shootCrossbow() {
         if (this.crossbowLoading) {
-            this.bot.activateItem();
+            this.bot.activateItem(this.useOffhand);
             this.bot.deactivateItem();
             this.crossbowLoading = false;
             this.shotCharging = false;

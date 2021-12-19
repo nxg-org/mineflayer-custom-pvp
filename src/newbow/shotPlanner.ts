@@ -7,6 +7,7 @@ import { Vec3 } from "vec3";
 import { InterceptEquations } from "../calc/intercept";
 import { AABB } from "@nxg-org/mineflayer-util-plugin";
 import { getEntityAABB } from "../calc/entityUtils";
+import { Item } from "prismarine-item";
 
 const emptyVec = new Vec3(0, 0, 0);
 const dv = Math.PI / 360;
@@ -17,6 +18,7 @@ type pitchAndTicks = { pitch: number; ticks: number };
 type CheckShotInfo = { yaw: number; pitch: number; ticks: number; shift?: boolean };
 export type CheckedShot = { hit: boolean; yaw: number; pitch: number; ticks: number; shotInfo: BasicShotInfo | null };
 export class ShotPlanner {
+    public weapon: string = "bow"
     private intercepter: InterceptEquations;
     private tracker: EntityTracker;
     constructor(private bot: Bot) {
@@ -36,7 +38,6 @@ export class ShotPlanner {
         if (shotInfo.shotInfo) shotInfo = shotInfo.shotInfo as BasicShotInfo;
         if (!shotInfo) return false;
         if (shotInfo.blockingBlock && pitch > PIOver3) {
-            console.log(shotInfo.blockingBlock.position, target.y);
             return shotInfo.blockingBlock.position.y <= target.y - 1;
         } else {
             return shotInfo.intersectPos && !shotInfo.blockingBlock;
@@ -94,8 +95,8 @@ export class ShotPlanner {
     public checkForBlockIntercepts(target: AABBComponents, ...shots: CheckShotInfo[]): CheckedShot {
         for (const { pitch, ticks, yaw } of shots) {
             const initShot = Shot.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel, heldItem: this.bot.entity.heldItem },
-                this.intercepter
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
+                this.intercepter, this.weapon
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: true })!;
             if (this.isShotValid(shot, target.position, Number(pitch)))
@@ -112,8 +113,8 @@ export class ShotPlanner {
 
         for (let pitch = minPitch + dv; pitch < PIOver2; pitch += dv) {
             const initShot = Shot.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel, heldItem: this.bot.entity.heldItem },
-                this.intercepter
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
+                this.intercepter, this.weapon
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false })!;
             if (!shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2)) {
@@ -146,8 +147,8 @@ export class ShotPlanner {
             inbetween = inbetween.map((y) => y + Math.sign(orgYaw - y) * 0.02);
             for (const yaw of inbetween) {
                 const initShot = Shot.fromShootingPlayer(
-                    { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel, heldItem: this.bot.entity.heldItem },
-                    this.intercepter
+                    { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
+                    this.intercepter, this.weapon
                 );
                 const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: true })!;
                 if (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2)) {
@@ -168,8 +169,8 @@ export class ShotPlanner {
 
         for (let pitch = -PIOver2; pitch < PIOver2; pitch += dv) {
             const initShot = Shot.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel, heldItem: this.bot.entity.heldItem },
-                this.intercepter
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
+                this.intercepter, this.weapon
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false });
             if (!shot) continue;
