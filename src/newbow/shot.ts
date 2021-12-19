@@ -22,7 +22,7 @@ import { trajectoryInfo, airResistance } from "../calc/constants";
 import { getEntityAABB } from "../calc/entityUtils";
 import { promisify } from "util";
 import { InterceptEquations } from "../calc/intercept";
-import { AABB } from "../../../utilplugin";
+import { AABB } from "@nxg-org/mineflayer-util-plugin";
 
 export type ShotEntity = { position: Vec3; velocity: Vec3; yaw?: number; pitch?: number; heldItem?: Item | null };
 export type AABBComponents = { position: Vec3; height: number; width?: number };
@@ -308,7 +308,6 @@ export class Shot {
     //TODO: Optimize. More accurate than hawkeye's, but anywhere from 1.5x to 7x as expensive.
     public newCalcToEntity(target: AABBComponents | AABB, blockChecking: boolean = false): BasicShotInfo {
         if (!(target instanceof AABB)) target = getEntityAABB(target);
-        target.extend(0, 0.18, 0);
         // height = height = 1.62 ? height + 0.18 : 0;
         const entityAABB = target;
         let currentPosition = this.initialPos.clone();

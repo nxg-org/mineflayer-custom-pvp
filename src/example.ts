@@ -57,7 +57,7 @@ let intercepter = new InterceptEquations(bot);
 
 //awkward handling due to lack of velocity support from entities.
 bot.on("entitySpawn", async (orgEntityData) => {
-    if (orgEntityData.name === "arrow" && target) {
+    if (orgEntityData.name === "arrow" && target && listenToArrowSpawns) {
         let updated;
         for (let i = 0; i < 3; i++) {
             updated = bot.nearestEntity((e) => e.id === orgEntityData.id)!;
@@ -71,7 +71,7 @@ bot.on("entitySpawn", async (orgEntityData) => {
             await bot.waitForTicks(1);
             velocity = updated.position.minus(lastPos);
         } while (velocity.equals(emptyVec) && !orgEntityData.position.equals(lastPos));
-        const speed = bot.newbowpvp.tracker.getEntitySpeed(target)
+        const speed = bot.bowpvp.tracker.getEntitySpeed(target)
         const hit = Shot.fromWeapon({ position: updated.position, velocity }, intercepter).hitEntityWithPredictionCheck(target, speed);
         console.log(velocity, hit)
     }
@@ -84,7 +84,7 @@ bot.on("chat", async (username, message) => {
         case "bowtest":
             target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);
             if (!target) return;
-            bot.bowpvp.attack(target);
+            bot.bowpvp.attack(target, "bow");
             break;
         case "swordtest":
             target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);
@@ -92,18 +92,10 @@ bot.on("chat", async (username, message) => {
             bot.swordpvp.attack(target);
             break;
         case "bowstop":
-            bot.newbowpvp.stop();
-            shootAtPlayer = false
+            bot.bowpvp.stop();
             break;
         case "swordstop":
             bot.swordpvp.stop();
-            break;
-        case "newbowtest":
-            shootAtPlayer = true
-            target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);
-            if (!target) return;
-            bot.newbowpvp.tracker.trackEntity(target)
-            bot.newbowpvp.attack(target, "crossbow");
             break;
         case "arrowtest":
             listenToArrowSpawns = true;

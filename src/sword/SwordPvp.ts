@@ -288,7 +288,9 @@ export class SwordPvp {
                 if (this.timeToNextAttack !== 7) return false;
                 if (!this.bot.entity.onGround) return false;
                 if (this.target.position.distanceTo(this.bot.entity.position) > this.attackRange + 1) return false;
+                console.log("jump")
                 this.bot.setControlState("jump", true);
+                this.bot.setControlState("jump", false)
                 return true;
             default:
                 return false;

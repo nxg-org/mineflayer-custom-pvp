@@ -114,7 +114,7 @@ export function getGrades(Vo: number, Voy: number, Gravity: number) {
 }
 
 export function vectorMagnitude(vec: Vec3): number {
-    return Math.sqrt(vec.x * vec.x + vec.z * vec.z);
+    return Math.sqrt(vec.x * vec.x + vec.y + vec.y + vec.z * vec.z);
 }
 
 export function VoToVox(vec: Vec3, mag?: number): number {    

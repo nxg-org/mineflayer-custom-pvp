@@ -1,4 +1,4 @@
-import { AABB } from "../../../utilplugin"
+import { AABB } from "@nxg-org/mineflayer-util-plugin"
 import {Vec3} from "vec3"
 
 export function getEntityAABB(entity: { position: Vec3; height: number, width?: number}): AABB {

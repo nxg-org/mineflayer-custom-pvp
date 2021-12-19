@@ -1,11 +1,11 @@
 import { Bot } from "mineflayer";
 import { AABBComponents, BasicShotInfo, Shot } from "./shot";
 import { Entity } from "prismarine-entity";
-import { degreesToRadians, getTargetYaw, yawPitchAndSpeedToDir } from "../calc/mathUtilts";
+import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir } from "../calc/mathUtilts";
 import { EntityTracker } from "./entityTracker";
 import { Vec3 } from "vec3";
 import { InterceptEquations } from "../calc/intercept";
-import { AABB } from "../../../utilplugin";
+import { AABB } from "@nxg-org/mineflayer-util-plugin";
 import { getEntityAABB } from "../calc/entityUtils";
 
 const emptyVec = new Vec3(0, 0, 0);
@@ -22,13 +22,25 @@ export class ShotPlanner {
     constructor(private bot: Bot) {
         this.intercepter = new InterceptEquations(bot);
         this.tracker = new EntityTracker(bot);
-        bot.once("spawn", () => this.tracker.trackEntity(this.bot.entity))
-
-
+        bot.once("spawn", () => this.tracker.trackEntity(this.bot.entity));
     }
 
     public get originVel(): Vec3 {
-        return this.tracker.getEntitySpeed(this.bot.entity)
+        return this.tracker.getEntitySpeed(this.bot.entity);
+    }
+
+    private isShotValid(shotInfo1: CheckedShot | BasicShotInfo, target: Vec3, pitch: number) {
+        let shotInfo = (shotInfo1 as CheckedShot).shotInfo;
+        if (!shotInfo) shotInfo = shotInfo1 as BasicShotInfo;
+        //@ts-expect-error
+        if (shotInfo.shotInfo) shotInfo = shotInfo.shotInfo as BasicShotInfo;
+        if (!shotInfo) return false;
+        if (shotInfo.blockingBlock && pitch > PIOver3) {
+            console.log(shotInfo.blockingBlock.position, target.y);
+            return shotInfo.blockingBlock.position.y <= target.y - 1;
+        } else {
+            return shotInfo.intersectPos && !shotInfo.blockingBlock;
+        }
     }
 
     /**
@@ -48,14 +60,17 @@ export class ShotPlanner {
             pitch = initInfo.pitch;
             if (avgSpeed.equals(emptyVec)) {
                 const correctShot = this.checkForBlockIntercepts(target, initInfo);
-                if (!correctShot.shotInfo) continue;
-                if (correctShot.shotInfo.nearestDistance < 2) return correctShot;
+                if (this.isShotValid(correctShot, target.position, pitch)) return correctShot;
+                const yawShot = this.getAlternativeYawShots(target, initInfo);
+                if (this.isShotValid(yawShot, target.position, pitch)) return yawShot;
             } else {
                 const newInfo = this.shiftTargetPositions(target, avgSpeed, initInfo);
                 for (const i of newInfo) {
                     const correctShot = this.checkForBlockIntercepts(i.target, ...i.info);
                     if (!correctShot.shotInfo) continue;
-                    if (correctShot.shotInfo.nearestDistance < 2) return correctShot;
+                    if (this.isShotValid(correctShot, i.target.position, pitch)) return correctShot;
+                    const yawShot = this.getAlternativeYawShots(i.target, initInfo);
+                    if (this.isShotValid(yawShot, i.target.position, pitch)) return yawShot;
                 }
             }
         }
@@ -83,8 +98,8 @@ export class ShotPlanner {
                 this.intercepter
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: true })!;
-            if (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2))
-                return { hit: true, shotInfo: shot, yaw, ticks, pitch: Number(pitch) };
+            if (this.isShotValid(shot, target.position, Number(pitch)))
+                return { hit: true, yaw, pitch: Number(pitch), ticks, shotInfo: shot };
         }
         return { hit: false, yaw: NaN, pitch: NaN, ticks: NaN, shotInfo: null };
     }
@@ -119,6 +134,28 @@ export class ShotPlanner {
             if (isHitting) continue;
         }
         return { yaw: NaN, pitch: NaN, ticks: NaN };
+    }
+
+    public getAlternativeYawShots(target: AABBComponents, ...shots: CheckShotInfo[]): CheckedShot {
+        for (const { pitch, yaw: orgYaw } of shots) {
+            const yaws = getEntityAABB(target)
+                .toVertices()
+                .map((p) => getTargetYaw(this.bot.entity.position, p))
+                .sort((a, b) => orgYaw - Math.abs(a) - (orgYaw - Math.abs(b)));
+            let inbetween = [yaws.pop()!, yaws.pop()!];
+            inbetween = inbetween.map((y) => y + Math.sign(orgYaw - y) * 0.02);
+            for (const yaw of inbetween) {
+                const initShot = Shot.fromShootingPlayer(
+                    { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel, heldItem: this.bot.entity.heldItem },
+                    this.intercepter
+                );
+                const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: true })!;
+                if (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2)) {
+                    return { hit: true, yaw, pitch, ticks: shot.totalTicks, shotInfo: shot };
+                }
+            }
+        }
+        return { hit: false, yaw: NaN, pitch: NaN, ticks: NaN, shotInfo: null };
     }
 
     //TODO: This is too expensive. Will aim at offset off foot instead of calc'ing all hits and averaging.
