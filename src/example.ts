@@ -91,7 +91,7 @@ bot.on("entityMoved", async (orgEntityData) => {
         const entityVel = vectorMagnitude(orgEntityData.velocity)
         if (isNaN(entityVel)) return;
         console.log(orgEntityData.name, orgEntityData.velocity, entityVel)
-        const hit = Shot.fromOther({ position: orgEntityData.position, velocity: orgEntityData.velocity }, intercepter).hitEntityWithPredictionCheck(target, speed);
+        const hit = Shot.fromThrowable({ position: orgEntityData.position, velocity: orgEntityData.velocity }, intercepter).hitEntityWithPredictionCheck(target, speed);
         console.log(hit)
     }
 })
@@ -106,6 +106,7 @@ bot.on("chat", async (username, message) => {
         case "ender_pearl":
         case "splash_potion":
         case "snowball":
+        case "egg":
         case "crossbow_firework":
             bot.bowpvp.stop();
             target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);

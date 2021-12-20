@@ -2,7 +2,6 @@ import { Entity } from "prismarine-entity";
 import { Bot } from "mineflayer";
 import { promisify } from "util";
 import { Vec3 } from "vec3";
-import { dirToYawAndPitch } from "../calc/mathUtilts";
 
 const sleep = promisify(setTimeout);
 const emptyVec = new Vec3(0, 0, 0);
@@ -55,7 +54,7 @@ export class EntityTracker {
         this.trackingData[entity.id] ??= { tracking: true, info: { avgSpeed: emptyVec, tickInfo: [] } };
     }
 
-    public stopTrackingEntity(entity: Entity, clear: boolean = false) {
+    public stopTrackingEntity(entity: Entity, clear: boolean = true) {
         if (!this.trackingData[entity.id]) return;
         this.trackingData[entity.id].tracking = false;
         if (clear) {

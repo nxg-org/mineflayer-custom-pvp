@@ -1,8 +1,8 @@
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
 import { Vec3 } from "vec3";
-import { InterceptEquations } from "./intercept";
-import { degreesToRadians, getGrades, getPremonition, getTargetDistance, getTargetYaw, getVo, getVox, getVoy } from "./mathUtilts";
+import { InterceptEquations } from "../calc/intercept";
+import { degreesToRadians, getGrades, getPremonition, getTargetDistance, getTargetYaw, getVo, getVox, getVoy } from "../calc/mathUtilts";
 
 // Physics factors
 let BaseVo: number; // Power of shot

@@ -120,8 +120,8 @@ export class BowPVP {
         this.useOffhand = false;
         // if (!this.bot.util.inv.getHandWithItem(true)?.name.includes("firework")) {
         const ammo = this.bot.util.inv.getAllItems().find(item => item.name.includes("firework"))!
-        this.bot.util.inv.customEquip(ammo, "off-hand")
-        this.bot.util.inv.customEquip(weapon, "hand")
+        this.bot.util.inv.customEquip(ammo, this.bot.util.inv.getHand(!this.useOffhand))
+        this.bot.util.inv.customEquip(weapon, this.bot.util.inv.getHand(this.useOffhand))
         return true;
         // } 
     }
@@ -221,11 +221,13 @@ export class BowPVP {
                 this.waitTime = 1200;
                 break;
             case "snowball":
-            case "ender_pearl":
             case "egg":
             case "splash_potion":
                 this.waitTime = 150;
                 break;
+            case "ender_pearl":
+                this.waitTime = 1000
+                break
             case "crossbow":
             case "crossbow_firework":
                 const weaponHand = this.bot.util.inv.getHandWithItem(this.useOffhand);
@@ -234,7 +236,7 @@ export class BowPVP {
                 this.waitTime = 1250 - (isEnchanted ? isEnchanted.lvl : 0) * 250;
                 break;
             default:
-                this.waitTime = 1250;
+                this.waitTime = 1200;
         }
 
         if (!this.shotCharging) {

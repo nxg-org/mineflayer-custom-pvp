@@ -21,8 +21,7 @@ import {
 import { trajectoryInfo, airResistance } from "../calc/constants";
 import { getEntityAABB } from "../calc/entityUtils";
 import { promisify } from "util";
-import { InterceptEquations } from "../calc/intercept";
-import { AABB } from "@nxg-org/mineflayer-util-plugin";
+import { AABB, InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
 
 export type ShotEntity = { position: Vec3; velocity: Vec3; yaw?: number; pitch?: number; heldItem?: Item | null };
 export type AABBComponents = { position: Vec3; height: number; width?: number };
@@ -71,13 +70,13 @@ export class Shot {
     private points: Vec3[];
     private pointVelocities: Vec3[];
     private blockHit = false;
-    public interceptCalcs?: InterceptEquations;
+    public interceptCalcs?: InterceptFunctions;
     public blockCheck: boolean = false;
 
     constructor(
         originVel: Vec3,
         { position: pPos, velocity: pVel, gravity }: Required<ProjectileMotion>,
-        interceptCalcs?: InterceptEquations
+        interceptCalcs?: InterceptFunctions
     ) {
         const { yaw, pitch } = dirToYawAndPitch(pVel);
         this.initialPos = pPos.clone();
@@ -93,7 +92,7 @@ export class Shot {
     // TODO: With yaw, pitch, and scalar speed, calculate velocity.
     static fromShootingPlayer(
         { position, yaw, pitch, velocity, heldItem }: ShotEntity,
-        interceptCalcs: InterceptEquations,
+        interceptCalcs: InterceptFunctions,
         weapon?: string
     ): Shot {
         const info = trajectoryInfo[weapon! ?? heldItem?.name];
@@ -105,15 +104,15 @@ export class Shot {
         }
     }
 
-    static fromWeapon({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptEquations): Shot {
+    static fromWeapon({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptFunctions): Shot {
         return new Shot(emptyVec, { position, velocity, gravity: 0.05 }, interceptCalcs);
     }
 
-    static fromOther({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptEquations): Shot {
+    static fromThrowable({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptFunctions): Shot {
         return new Shot(emptyVec, { position, velocity, gravity: 0.03 }, interceptCalcs);
     }
 
-    static withoutGravity({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptEquations): Shot {
+    static withoutGravity({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptFunctions): Shot {
         return new Shot(emptyVec, { position, velocity, gravity: 0.00 }, interceptCalcs);
     }
 
@@ -122,7 +121,7 @@ export class Shot {
     }
 
     public loadWorld(bot: Bot): void {
-        if (!this.interceptCalcs) this.interceptCalcs = new InterceptEquations(bot);
+        if (!this.interceptCalcs) this.interceptCalcs = new InterceptFunctions(bot);
     }
 
     public HitCheckXZ(entity: AABBComponents): boolean {
@@ -229,7 +228,7 @@ export class Shot {
         origin: Vec3,
         rawVelocity: Vec3,
         gravity: number,
-        blockChecker?: InterceptEquations,
+        blockChecker?: InterceptFunctions,
         blockChecking: boolean = false
     ): { positions: Vec3[]; velocities: Vec3[]; blockHit: Block | null } {
         // rawVelocity = notchianVel(rawVelocity).vel
@@ -271,7 +270,7 @@ export class Shot {
         origin: Vec3,
         rawVelocity: Vec3,
         gravity: number,
-        blockChecker?: InterceptEquations,
+        blockChecker?: InterceptFunctions,
         blockChecking: boolean = false
     ): { positions: Vec3[]; velocities: Vec3[]; blockHit: Block | null } {
         // rawVelocity = notchianVel(rawVelocity).vel;

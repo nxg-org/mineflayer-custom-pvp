@@ -2,27 +2,27 @@
 # yarn lockfile v1
 
 
-"@azure/msal-common@^5.1.0":
-  version "5.1.0"
-  resolved "https://registry.yarnpkg.com/@azure/msal-common/-/msal-common-5.1.0.tgz#e3a75a8ba1602da040698046161961d6dc59bbc4"
-  integrity sha512-4zHZ5Ec7jAgTIWZO3ap1ozgIPGAirF1wL8UhsmPF9QDoZz0cMHdaNmtov5i2+6Xq37YMzhN5s50EFHBuXd7sDQ==
+"@azure/msal-common@^5.2.0":
+  version "5.2.0"
+  resolved "https://registry.yarnpkg.com/@azure/msal-common/-/msal-common-5.2.0.tgz#49440e04f4d0961fc5a1a1718fbe5e4eae2db5db"
+  integrity sha512-oVc4soy5MEZOp9NvCDqBk57mtiUTJXQQ8Z8S/4UiRQP8RG8snuCFQUs9xxdIfvl2FWIvgiBz+SMByyjTaRX42Q==
   dependencies:
     debug "^4.1.1"
 
 "@azure/msal-node@^1.1.0":
-  version "1.3.3"
-  resolved "https://registry.yarnpkg.com/@azure/msal-node/-/msal-node-1.3.3.tgz#3b977fa371d0c5fcd63df2e458353044a1eb64a1"
-  integrity sha512-ZtVCVzr7V4xEeqICa7E9g6BY3noZv96XG11ENuqEiz/PA1OzPD1/x0QF6BPHVldST8wwoevXxPw+t/h3AFII7w==
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/@azure/msal-node/-/msal-node-1.4.0.tgz#660685804fbdc533b10cc699f16323e27ec582c6"
+  integrity sha512-Ek6hqOFUi5QEAxZ55awM8y1N+9SzS9Qh8ijF4RDLtFuHzqP7xXmMnVC1lae45FlH55DUOo7dg/smuDJnb4kw6g==
   dependencies:
-    "@azure/msal-common" "^5.1.0"
+    "@azure/msal-common" "^5.2.0"
     axios "^0.21.4"
     jsonwebtoken "^8.5.1"
     uuid "^8.3.0"
 
 "@nxg-org/mineflayer-util-plugin@^1.3.5":
-  version "1.3.5"
-  resolved "https://registry.yarnpkg.com/@nxg-org/mineflayer-util-plugin/-/mineflayer-util-plugin-1.3.5.tgz#0ca8a9805077f61e0323cbe51760b67f81a798b5"
-  integrity sha512-VIOup4X/mu256mSi26yuGgPTQLvK4M4iF70mBEyhbdkTMyepVZRiPRl73V6cTjgrUOBM6lST2v/LInwaddCIbg==
+  version "1.3.6"
+  resolved "https://registry.yarnpkg.com/@nxg-org/mineflayer-util-plugin/-/mineflayer-util-plugin-1.3.6.tgz#27cf4257a501cc2e531a5e3f9e0fa0e202496ab2"
+  integrity sha512-74kjdHq4D2uczb5dnm3HtXTn46935ZrSHvI6vZ0ZTu5N3ycK3cm6gkxK8AmvapAon/rO7YeR2TNDQlpjAX0JiQ==
   dependencies:
     minecraft-data "^2.97.0"
     mineflayer "^3.11.2"
@@ -33,9 +33,9 @@
     vec3 "^0.1.7"
 
 "@types/node@^16.11.11":
-  version "16.11.11"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-16.11.11.tgz#6ea7342dfb379ea1210835bada87b3c512120234"
-  integrity sha512-KB0sixD67CeecHC33MYn+eYARkqTheIRNuu97y2XMjR7Wu3XibO1vaY6VBV6O/a89SPI81cEUIYT87UqUWlZNw==
+  version "16.11.14"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-16.11.14.tgz#4939fb42e5b0ffb3ea7e193c28244fe7414977a6"
+  integrity sha512-mK6BKLpL0bG6v2CxHbm0ed6RcZrAtTHBTd/ZpnlVPVa3HkumsqLE4BC4u6TQ8D7pnrRbOU0am6epuALs+Ncnzw==
 
 "@xboxreplay/errors@^0.1.0":
   version "0.1.0"
@@ -127,9 +127,9 @@ fast-json-stable-stringify@^2.0.0:
   integrity sha512-lhd/wF+Lk98HZoTCtlVraHtfh5XYijIjalXck7saUtuanSDyLMxnHhSXEDJqHxD7msR8D0uCmqlkwjCV8xvwHw==
 
 follow-redirects@^1.14.0:
-  version "1.14.5"
-  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.14.5.tgz#f09a5848981d3c772b5392309778523f8d85c381"
-  integrity sha512-wtphSXy7d4/OR+MvIFbCVBDzZ5520qV8XfPklSN5QtxuMUJZ+b0Wnst1e1lCDocfzuCkHqj8k0FpZqO+UIaKNA==
+  version "1.14.6"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.14.6.tgz#8cfb281bbc035b3c067d6cd975b0f6ade6e855cd"
+  integrity sha512-fhUl5EwSJbbl8AR+uYL2KQDxLkdSjZGR36xy46AO7cOMTrCMON6Sa28FmAnC2tRTDbd/Uuzz3aJBv7EBN7JH8A==
 
 inherits@^2.0.3:
   version "2.0.4"
@@ -234,12 +234,7 @@ macaddress@^0.5.1:
   resolved "https://registry.yarnpkg.com/macaddress/-/macaddress-0.5.2.tgz#0ed6c836da3b182e4400bc4594083cdd33511cc4"
   integrity sha512-cYYBbT3b84hTEHssWE6OmsuqF/NiLXE2RGK9Sc9SwwE9kMoKrbaUAJtKs6ucd0FFgZjXE1Wm3hoGEEYas0N6EA==
 
-minecraft-data@^2.61.0, minecraft-data@^2.62.1, minecraft-data@^2.73.1, minecraft-data@^2.74.0, minecraft-data@^2.79.0, minecraft-data@^2.89.4, minecraft-data@^2.97.0:
-  version "2.97.0"
-  resolved "https://registry.yarnpkg.com/minecraft-data/-/minecraft-data-2.97.0.tgz#a8ef10165794437c05ae0c16e0460359843a3c11"
-  integrity sha512-hs///noGkmR6PBzA1VT+8oP3V/VR2JFno2Jw2M3RFLmuQtMqBSQBrpWqBa8ycx9eEA0bccasftEimv5OSpIwxQ==
-
-minecraft-data@^2.75.0:
+minecraft-data@^2.61.0, minecraft-data@^2.62.1, minecraft-data@^2.73.1, minecraft-data@^2.74.0, minecraft-data@^2.75.0, minecraft-data@^2.79.0, minecraft-data@^2.97.0, minecraft-data@^2.98.0:
   version "2.99.3"
   resolved "https://registry.yarnpkg.com/minecraft-data/-/minecraft-data-2.99.3.tgz#e9ae51e1e9ade15391a3abd8472dfd6861620bce"
   integrity sha512-qZTC7p62SUicZLZU+PWPrY4AEJZt8DRqmu+QGL7hkvXQm+DytFlik/tQcCZYxJZ/V8fk/nWe8xBx1Qt2H36ZnA==
@@ -250,9 +245,9 @@ minecraft-folder-path@^1.2.0:
   integrity sha512-qaUSbKWoOsH9brn0JQuBhxNAzTDMwrOXorwuRxdJKKKDYvZhtml+6GVCUrY5HRiEsieBEjCUnhVpDuQiKsiFaw==
 
 minecraft-protocol@^1.17.0:
-  version "1.28.1"
-  resolved "https://registry.yarnpkg.com/minecraft-protocol/-/minecraft-protocol-1.28.1.tgz#2ca03eb2cd1420303568aec406121572489e4f7e"
-  integrity sha512-N4QR4EcSSVme14BqbPKU6dbGbtMfSAAB5Z69TG1te6nLXySaABoXGrjk7TzajdQ2kHuNQDxJ/jcBtwWGBC4Bkg==
+  version "1.29.1"
+  resolved "https://registry.yarnpkg.com/minecraft-protocol/-/minecraft-protocol-1.29.1.tgz#6478805e59b34a1c1f345c918271db4bdf5f69cd"
+  integrity sha512-vjDZBnj3S4uc8e09lMsLFIYto7YFlCea8S8nZ6BztONZvgIvrMGXdWTOXgrHNR8KUHo7r3eNjrYxSJTxLqOfgw==
   dependencies:
     aes-js "^3.1.2"
     buffer-equal "^1.0.0"
@@ -260,7 +255,7 @@ minecraft-protocol@^1.17.0:
     endian-toggle "^0.0.0"
     lodash.get "^4.1.2"
     lodash.merge "^4.3.0"
-    minecraft-data "^2.89.4"
+    minecraft-data "^2.98.0"
     minecraft-folder-path "^1.2.0"
     node-fetch "^2.6.1"
     node-rsa "^0.4.2"
@@ -352,9 +347,9 @@ node-rsa@^0.4.2:
     asn1 "0.2.3"
 
 prismarine-auth@^1.1.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/prismarine-auth/-/prismarine-auth-1.4.0.tgz#f6a157575b303bd90cb853d2ad7f4b97ab8267bd"
-  integrity sha512-Bd/UtNMaRjdkpvft78iFd3FDSJz8qLhi5GklMCb+sAkdWNn3zHSqNYk27Kad7ix9N34dZ+f7wL8nS26tV6qL7g==
+  version "1.4.1"
+  resolved "https://registry.yarnpkg.com/prismarine-auth/-/prismarine-auth-1.4.1.tgz#6e55601dd12d328ce4bf550caedf41ceb0dd43f9"
+  integrity sha512-IyFz+TWkngtRPs19MWP/7dYU1vheiASoil5d7amvIXhbK4zWb/w7uGcwLvOO0fwX9qw5hCt/JKimPrRcw8La0w==
   dependencies:
     "@azure/msal-node" "^1.1.0"
     "@xboxreplay/xboxlive-auth" "^3.3.3"
@@ -542,9 +537,9 @@ typed-emitter@^1.2.0:
   integrity sha512-weBmoo3HhpKGgLBOYwe8EB31CzDFuaK7CCL+axXhUYhn4jo6DSkHnbefboCF5i4DQ2aMFe0C/FdTWcPdObgHyg==
 
 typescript@^4.5.2:
-  version "4.5.2"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.5.2.tgz#8ac1fba9f52256fdb06fb89e4122fa6a346c2998"
-  integrity sha512-5BlMof9H1yGt0P8/WF+wPNw6GfctgGjXp5hkblpyT+8rkASSmkUKMXrxR0Xg8ThVCi/JnHQiKXeBaEwCeQwMFw==
+  version "4.5.4"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.5.4.tgz#a17d3a0263bf5c8723b9c52f43c5084edf13c2e8"
+  integrity sha512-VgYs2A2QIRuGphtzFV7aQJduJ2gyfTljngLzjpfW9FoYZF6xuw1W0vW9ghCKLfcWrCFxK81CSGRAvS1pn4fIUg==
 
 uint4@^0.1.2:
   version "0.1.2"

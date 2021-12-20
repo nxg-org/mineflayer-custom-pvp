@@ -1,4 +1,4 @@
-import { HawkEye } from "./bow/bowpvp";
+import { HawkEye } from "./old/bowpvp";
 import { Shot } from "./newbow/shot";
 import { EntityTracker } from "./newbow/entityTracker";
 import { SwordPvp } from "./sword/SwordPvp";

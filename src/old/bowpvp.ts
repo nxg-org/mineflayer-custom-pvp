@@ -1,8 +1,8 @@
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
-import { HawkEyeEquations } from "../calc/hawkEyeEquations";
+import { HawkEyeEquations } from "./hawkEyeEquations";
 import { promisify } from "util";
-import { CustomHawkEyeEquations } from "../calc/customHawkEyeEquations";
+import { CustomHawkEyeEquations } from "./customHawkEyeEquations";
 import { toNotchianPitch, toNotchianYaw } from "../calc/mathUtilts";
 import { Vec3 } from "vec3";
 const sleep = promisify(setTimeout);
