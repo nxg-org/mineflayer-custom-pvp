@@ -36,10 +36,10 @@ export class BowPVP {
     }
 
     /**
-     * 
-     * @param entity 
-     * @param velocity 
-     * @returns 
+     *
+     * @param entity
+     * @param velocity
+     * @returns
      */
     public shotToEntity(entity: Entity, velocity?: Vec3) {
         if (!velocity) velocity = this.tracker.getEntitySpeed(entity);
@@ -48,8 +48,8 @@ export class BowPVP {
 
     /**
      * @function hasWeapon
-     * @param {string} weapon 
-     * @returns 
+     * @param {string} weapon
+     * @returns
      */
     public hasWeapon(weapon?: string): boolean {
         weapon ??= this.weapon;
@@ -60,7 +60,7 @@ export class BowPVP {
      * @function hasAmmo
      * @param   {string} [weapon=this.weapon] Optional string name of a weapon. Defaults to this.weapon.
      * @returns {boolean} If the weapon has ammo or not.
-     * 
+     *
      * ### Usage:
      * ```ts
      * // Let us fire!
@@ -73,12 +73,14 @@ export class BowPVP {
      * ```
      */
     public hasAmmo(weapon?: string): boolean {
-        weapon ??= this.weapon
+        weapon ??= this.weapon;
         switch (weapon) {
             case "bow":
                 return !!this.bot.inventory.items().find((item) => item.name.includes("arrow"));
             case "crossbow":
-                return !!this.bot.inventory.items().find((item) => item.name.includes("arrow") || item.name.includes("firework"));
+                return !!this.bot.inventory.items().find((item) => item.name.includes("arrow"));
+            case "crossbow_firework":
+                return !!this.bot.util.inv.getAllItems().find(item => item.name.includes("firework"));
             default:
                 return !!this.bot.inventory.items().find((item) => weapon && item.name.includes(weapon));
         }
@@ -102,7 +104,7 @@ export class BowPVP {
         ```
      */
     public async checkForWeapon(weapon?: string): Promise<boolean> {
-        weapon ??= this.weapon
+        weapon ??= this.weapon;
         const usedHand = this.bot.util.inv.getHandWithItem(this.useOffhand);
         if (!usedHand || !usedHand.name.includes(weapon)) {
             const foundItem = this.bot.util.inv.getAllItems().find((item) => item.name === weapon);
@@ -112,10 +114,22 @@ export class BowPVP {
         return true;
     }
 
+    public async fireworkSetup(): Promise<boolean> {
+        const weapon = this.bot.util.inv.getAllItems().find((item) => item.name.includes("crossbow"))
+        if (!this.hasAmmo() || !weapon) return false;
+        this.useOffhand = false;
+        // if (!this.bot.util.inv.getHandWithItem(true)?.name.includes("firework")) {
+        const ammo = this.bot.util.inv.getAllItems().find(item => item.name.includes("firework"))!
+        this.bot.util.inv.customEquip(ammo, "off-hand")
+        this.bot.util.inv.customEquip(weapon, "hand")
+        return true;
+        // } 
+    }
+
     /**
      * @function stop
      * @public
-     * 
+     *
      * ### Usage:
      * ```ts
      * // Stop with the bow!
@@ -133,7 +147,7 @@ export class BowPVP {
         if (this.shotCharging && this.shotInfo) this.bot.util.move.forceLook(this.shotInfo.yaw, this.shotInfo.pitch, true);
         this.bot.deactivateItem();
     }
-    
+
     /**
      * Attacks a specified target with a specified weapon.
      * @function attack
@@ -141,8 +155,8 @@ export class BowPVP {
      * @param   {Entity} target An Entity object.
      * @param   {string} [weapon=this.weapon] An optional string name of an item featured in the bots inventory.
      * @return  {Promise<void>} An empty promise
-     * 
-     * ### Usage: 
+     *
+     * ### Usage:
      * ```ts
      * // Get our target
      * target = bot.nearestEntity((e) => (e.username ?? e.name) === "test_player");
@@ -154,21 +168,27 @@ export class BowPVP {
         if (this.target === target) return;
         this.enabled = true;
         this.target = target;
-        const hasWeapon = await this.checkForWeapon(weapon);
-        if (!hasWeapon) this.stop();
-        if (weapon) this.weapon = weapon
-        this.planner.weapon = this.weapon
+        if (weapon === "crossbow_firework") {
+            const isSetup = this.fireworkSetup();
+            if (!isSetup) return this.stop();
+        }
+        else {
+            const hasWeapon = await this.checkForWeapon(weapon);
+            if (!hasWeapon) return this.stop();
+        }
+        if (weapon) this.weapon = weapon;
+        this.planner.weapon = this.weapon;
         this.tracker.trackEntity(target);
         this.bot.on("physicsTick", this.getShotInfo);
         this.bot.on("physicsTick", this.chargeHandling);
     }
-    
+
     /**
-     * 
-     * @param yaw 
-     * @param grade 
-     * @param weapon 
-     * @returns 
+     *
+     * @param yaw
+     * @param grade
+     * @param weapon
+     * @returns
      */
     public async shootAt(yaw?: number, grade?: number, weapon?: string) {
         if (this.shotCharging) return;
@@ -176,39 +196,25 @@ export class BowPVP {
         if (!hasWeapon) this.stop();
         if (!yaw) yaw = this.bot.player.entity.yaw;
         if (!grade) grade = this.bot.player.entity.pitch;
-        if (weapon) this.weapon = weapon
+        if (weapon) this.weapon = weapon;
         await this.bot.look(yaw, grade, true);
         this.shotCharging = true;
         this.shotInit = performance.now();
-        
+
         this.bot.activateItem(this.useOffhand);
         while (!this.shotReady) await sleep(0);
         this.bot.deactivateItem();
-        
+
         this.shotCharging = false;
     }
 
     private getShotInfo = async () => {
-        if (!this.target) return;
+        if (!this.target) return
         this.shotInfo = this.shotToEntity(this.target, this.tracker.getEntitySpeed(this.target));
+        // console.log(this.shotInfo)
     };
 
-
     private chargeHandling = async () => {
-        const item = this.bot.util.inv.getHandWithItem(this.useOffhand);
-        if (!item || item.name !== this.weapon) {
-            const weaponFound = this.bot.util.inv.getAllItems().find((item) => item.name === this.weapon);
-            if (!!weaponFound) {
-                const equipped = await this.bot.util.inv.customEquip(weaponFound, this.bot.util.inv.getHand(this.useOffhand));
-                if (!equipped) {
-                    this.stop();
-                    return;
-                }
-            } else {
-                this.stop();
-                return;
-            }
-        }
         switch (this.weapon) {
             case "bow":
             case "trident":
@@ -220,13 +226,19 @@ export class BowPVP {
             case "splash_potion":
                 this.waitTime = 150;
                 break;
+            case "crossbow":
+            case "crossbow_firework":
+                const weaponHand = this.bot.util.inv.getHandWithItem(this.useOffhand);
+                if (!weaponHand) return console.log("cant find a thing")
+                const isEnchanted = weaponHand.enchants.find((enchant) => enchant.name === "quick_charge");
+                this.waitTime = 1250 - (isEnchanted ? isEnchanted.lvl : 0) * 250;
+                break;
             default:
-                this.waitTime = 1200;
+                this.waitTime = 1250;
         }
 
-
         if (!this.shotCharging) {
-            if (["bow", "crossbow", "trident"].includes(this.weapon)) {
+            if (["bow", "crossbow", "crossbow_firework", "trident"].includes(this.weapon)) {
                 this.bot.activateItem(this.useOffhand);
             }
             this.shotCharging = true;
@@ -248,7 +260,8 @@ export class BowPVP {
                     this.shotCharging = false;
                 }
 
-                if (this.weapon === "crossbow") {
+ 
+                if (["crossbow_firework", "crossbow"].includes(this.weapon)) {
                     this.shootCrossbow();
                 }
             }
@@ -256,6 +269,7 @@ export class BowPVP {
     };
 
     private shootCrossbow() {
+        // console.log(this.crossbowLoading, this.shotReady, performance.now() - this.shotInit)
         if (this.crossbowLoading) {
             this.bot.activateItem(this.useOffhand);
             this.bot.deactivateItem();
@@ -264,16 +278,8 @@ export class BowPVP {
             return;
         }
 
-        const hand = this.bot.util.inv.getHandWithItem(this.useOffhand);
-        if (hand?.name !== "crossbow") {
-            this.stop();
-            return;
-        }
 
-        const isEnchanted = hand.enchants ? hand.enchants.find((enchant) => enchant.name === "quick_charge") : undefined;
-        const shotIn = 1250 - (isEnchanted ? isEnchanted.lvl : 0) * 250;
-
-        if (this.weapon === "crossbow" && !this.crossbowLoading && performance.now() - this.shotInit > shotIn) {
+        if (!this.crossbowLoading && this.shotReady) {
             this.bot.deactivateItem();
             this.crossbowLoading = true;
         }

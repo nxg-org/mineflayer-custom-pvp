@@ -117,7 +117,7 @@ export class ShotPlanner {
                 this.intercepter, this.weapon
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false })!;
-            if (!shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2)) {
+            if (!shot.intersectPos) {
                 isHitting = false;
                 if (hittingData.length !== 0) {
                     const avgPitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
@@ -175,7 +175,7 @@ export class ShotPlanner {
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false });
             if (!shot) continue;
             // console.log(yaw, pitch, shot?.nearestDistance)
-            if (!shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2)) {
+            if (!shot.intersectPos) {
                 isHitting = false;
                 if (hittingData.length !== 0) {
                     const avgPitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.

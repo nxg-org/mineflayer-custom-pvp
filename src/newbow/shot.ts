@@ -113,6 +113,10 @@ export class Shot {
         return new Shot(emptyVec, { position, velocity, gravity: 0.03 }, interceptCalcs);
     }
 
+    static withoutGravity({ position, velocity }: ProjectileMotion, interceptCalcs: InterceptEquations): Shot {
+        return new Shot(emptyVec, { position, velocity, gravity: 0.00 }, interceptCalcs);
+    }
+
     public canCollisionDetect(): boolean {
         return !!this.interceptCalcs;
     }
@@ -178,7 +182,7 @@ export class Shot {
         if (!calcShot.intersectPos) return false;
         const { newTarget } = getPremonition(
             this.initialPos,
-            position.clone().add(avgSpeed.clone().scale(calcShot.totalTicks)),
+            position.clone().add(avgSpeed.clone().scale(calcShot.totalTicks + 5)),
             avgSpeed,
             calcShot.totalTicks
         );
