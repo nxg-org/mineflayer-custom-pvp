@@ -1,7 +1,7 @@
 import { Shot } from "@nxg-org/mineflayer-trajectories";
 import utilPlugin from "@nxg-org/mineflayer-util-plugin";
-import { EntityTracker } from "./newbow/entityTracker";
-import { SwordPvp } from "./sword/SwordPvp";
+import { EntityTracker } from "./bow/entityTracker";
+import { SwordPvp } from "./sword/swordpvp";
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
 
