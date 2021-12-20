@@ -1,5 +1,5 @@
 import { Bot } from "mineflayer";
-import { AABBComponents, BasicShotInfo, Shot } from "./shot";
+import { AABBComponents, BasicShotInfo, Shot } from "@nxg-org/mineflayer-trajectories";
 import { Entity } from "prismarine-entity";
 import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir } from "../calc/mathUtilts";
 import { EntityTracker } from "./entityTracker";

@@ -1,13 +1,13 @@
 import { createBot } from "mineflayer";
 import customPVP from "./index";
-import { Shot } from "./newbow/shot";
+import { Shot } from "@nxg-org/mineflayer-trajectories";
 import { EntityTracker } from "./newbow/entityTracker";
 import { promisify } from "util";
 import { Vec3 } from "vec3";
 import { Entity } from "prismarine-entity";
 import { vectorMagnitude, yawPitchAndSpeedToDir } from "./calc/mathUtilts";
 import { InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
-import { ShotPlanner } from "./newbow/shotPlanner";
+
 const sleep = promisify(setTimeout);
 
 let listenToArrowSpawns = false;

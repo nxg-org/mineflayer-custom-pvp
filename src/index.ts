@@ -1,12 +1,11 @@
-import { HawkEye } from "./old/bowpvp";
-import { Shot } from "./newbow/shot";
+import { Shot } from "@nxg-org/mineflayer-trajectories";
+import utilPlugin from "@nxg-org/mineflayer-util-plugin";
 import { EntityTracker } from "./newbow/entityTracker";
 import { SwordPvp } from "./sword/SwordPvp";
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
-import utilPlugin from "@nxg-org/mineflayer-util-plugin";
-import { BowPVP } from "./bow/newbowpvp";
 
+import { BowPVP } from "./bow/bowpvp";
 declare module "mineflayer" {
     interface Bot {
         swordpvp: SwordPvp;
