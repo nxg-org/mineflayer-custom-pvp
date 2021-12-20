@@ -16,11 +16,11 @@ export class CustomHawkEyeEquations {
     public target?: Entity;
     public startPosition?: Vec3;
     public targetPosition?: Vec3;
-    private intercept: InterceptEquations;
+    private intercept: InterceptFunctions;
 
     constructor(private bot: Bot) {
         this.bot = bot;
-        this.intercept = new InterceptEquations(bot)
+        this.intercept = new InterceptFunctions(bot)
     }
 
     // Simulate Arrow Trayectory

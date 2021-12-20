@@ -4,8 +4,7 @@ import { Entity } from "prismarine-entity";
 import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir } from "../calc/mathUtilts";
 import { EntityTracker } from "./entityTracker";
 import { Vec3 } from "vec3";
-import { InterceptEquations } from "../calc/intercept";
-import { AABB } from "@nxg-org/mineflayer-util-plugin";
+import { AABB,  InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
 import { getEntityAABB } from "../calc/entityUtils";
 import { Item } from "prismarine-item";
 
@@ -19,10 +18,10 @@ type CheckShotInfo = { yaw: number; pitch: number; ticks: number; shift?: boolea
 export type CheckedShot = { hit: boolean; yaw: number; pitch: number; ticks: number; shotInfo: BasicShotInfo | null };
 export class ShotPlanner {
     public weapon: string = "bow"
-    private intercepter: InterceptEquations;
+    private intercepter: InterceptFunctions;
     private tracker: EntityTracker;
     constructor(private bot: Bot) {
-        this.intercepter = new InterceptEquations(bot);
+        this.intercepter = new InterceptFunctions(bot);
         this.tracker = new EntityTracker(bot);
         bot.once("spawn", () => this.tracker.trackEntity(this.bot.entity));
     }

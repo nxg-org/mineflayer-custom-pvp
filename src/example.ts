@@ -6,7 +6,7 @@ import { promisify } from "util";
 import { Vec3 } from "vec3";
 import { Entity } from "prismarine-entity";
 import { vectorMagnitude, yawPitchAndSpeedToDir } from "./calc/mathUtilts";
-import { InterceptEquations } from "./calc/intercept";
+import { InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
 import { ShotPlanner } from "./newbow/shotPlanner";
 const sleep = promisify(setTimeout);
 
@@ -56,7 +56,7 @@ bot.once("spawn", () => {
     bot.bowpvp.useOffhand = true
 });
 
-let intercepter = new InterceptEquations(bot);
+let intercepter = new InterceptFunctions(bot);
 
 //awkward handling due to lack of velocity support from entities.
 // bot.on("entitySpawn", async (orgEntityData) => {
