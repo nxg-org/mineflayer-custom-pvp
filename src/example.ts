@@ -1,7 +1,7 @@
 import { createBot } from "mineflayer";
 import customPVP from "./index";
 import { Shot } from "@nxg-org/mineflayer-trajectories";
-import { EntityTracker } from "./newbow/entityTracker";
+import { EntityTracker } from "./bow/entityTracker";
 import { promisify } from "util";
 import { Vec3 } from "vec3";
 import { Entity } from "prismarine-entity";
@@ -80,23 +80,6 @@ let intercepter = new InterceptFunctions(bot);
 //     }
 // });
 
-let checkedEntities: {[entityId: number]: Entity} = {}
-
-bot.on("entityMoved", async (orgEntityData) => {
-    if (checkedEntities[orgEntityData.id]) return;
-    checkedEntities[orgEntityData.id] = orgEntityData
-
-    if (orgEntityData.type === "object" && target && listenToArrowSpawns) {
-        const speed = bot.bowpvp.tracker.getEntitySpeed(target)
-        const entityVel = vectorMagnitude(orgEntityData.velocity)
-        if (isNaN(entityVel)) return;
-        console.log(orgEntityData.name, orgEntityData.velocity, entityVel)
-        const hit = Shot.fromThrowable({ position: orgEntityData.position, velocity: orgEntityData.velocity }, intercepter).hitEntityWithPredictionCheck(target, speed);
-        console.log(hit)
-    }
-})
-
-
 bot.on("chat", async (username, message) => {
     const split = message.split(" ");
     switch (split[0]) {
@@ -123,12 +106,6 @@ bot.on("chat", async (username, message) => {
             break;
         case "swordstop":
             bot.swordpvp.stop();
-            break;
-        case "listen":
-            listenToArrowSpawns = true;
-            break;
-        case "listenstop":
-            listenToArrowSpawns = false;
             break;
     }
 });

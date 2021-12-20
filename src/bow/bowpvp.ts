@@ -4,8 +4,8 @@ import { Item } from "prismarine-item";
 import md from "minecraft-data";
 import { performance } from "perf_hooks";
 import { promisify } from "util";
-import { CheckedShot, ShotPlanner } from "../newbow/shotPlanner";
-import { EntityTracker } from "../newbow/entityTracker";
+import { CheckedShot, ShotPlanner } from "./shotPlanner";
+import { EntityTracker } from "./entityTracker";
 
 import { Vec3 } from "vec3";
 const sleep = promisify(setTimeout);

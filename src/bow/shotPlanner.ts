@@ -1,5 +1,5 @@
 import { Bot } from "mineflayer";
-import { AABBComponents, BasicShotInfo, Shot } from "@nxg-org/mineflayer-trajectories";
+import { AABBComponents, BasicShotInfo, Shot, ShotFactory } from "@nxg-org/mineflayer-trajectories";
 import { Entity } from "prismarine-entity";
 import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir } from "../calc/mathUtilts";
 import { EntityTracker } from "./entityTracker";
@@ -93,7 +93,7 @@ export class ShotPlanner {
 
     public checkForBlockIntercepts(target: AABBComponents, ...shots: CheckShotInfo[]): CheckedShot {
         for (const { pitch, ticks, yaw } of shots) {
-            const initShot = Shot.fromShootingPlayer(
+            const initShot = ShotFactory.fromShootingPlayer(
                 { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
                 this.intercepter, this.weapon
             );
@@ -111,7 +111,7 @@ export class ShotPlanner {
         let hittingData: pitchAndTicks[] = [];
 
         for (let pitch = minPitch + dv; pitch < PIOver2; pitch += dv) {
-            const initShot = Shot.fromShootingPlayer(
+            const initShot = ShotFactory.fromShootingPlayer(
                 { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
                 this.intercepter, this.weapon
             );
@@ -145,7 +145,7 @@ export class ShotPlanner {
             let inbetween = [yaws.pop()!, yaws.pop()!];
             inbetween = inbetween.map((y) => y + Math.sign(orgYaw - y) * 0.02);
             for (const yaw of inbetween) {
-                const initShot = Shot.fromShootingPlayer(
+                const initShot = ShotFactory.fromShootingPlayer(
                     { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
                     this.intercepter, this.weapon
                 );
@@ -167,7 +167,7 @@ export class ShotPlanner {
         let hittingData: pitchAndTicks[] = [];
 
         for (let pitch = -PIOver2; pitch < PIOver2; pitch += dv) {
-            const initShot = Shot.fromShootingPlayer(
+            const initShot = ShotFactory.fromShootingPlayer(
                 { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
                 this.intercepter, this.weapon
             );
