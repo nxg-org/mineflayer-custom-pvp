@@ -2,7 +2,7 @@ import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
 import {Block} from "prismarine-block"
 import { Vec3 } from "vec3";
-import { InterceptEquations } from "../calc/intercept";
+import { InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
 import { degreesToRadians, getGrades, getTargetDistance, getTargetYaw, getVo, getVox, getVoy, radiansToDegrees } from "../calc/mathUtilts";
 
 // Physics factors

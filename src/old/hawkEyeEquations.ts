@@ -1,7 +1,7 @@
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
 import { Vec3 } from "vec3";
-import { InterceptEquations } from "../calc/intercept";
+import { InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
 import { degreesToRadians, getGrades, getPremonition, getTargetDistance, getTargetYaw, getVo, getVox, getVoy } from "../calc/mathUtilts";
 
 // Physics factors
@@ -14,13 +14,13 @@ export class HawkEyeEquations {
     public speed: Vec3;
     public startPosition?: Vec3;
     public targetPosition?: Vec3;
-    private intercept: InterceptEquations;
+    private intercept: InterceptFunctions;
     public val = 0
 
     constructor(private bot: Bot) {
         this.bot = bot;
         this.speed = new Vec3(0, 0, 0);
-        this.intercept = new InterceptEquations(bot);
+        this.intercept = new InterceptFunctions(bot);
         this.val = 0;
     }
 
