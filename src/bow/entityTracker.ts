@@ -37,9 +37,6 @@ export class EntityTracker {
 
         this.trackingData[entityId].info.tickInfo.push({ position: entity.position.clone(), velocity: testVel.clone() });
 
-        console.log(testVel);
-        console.log(dirToYawAndPitch(testVel), entity.yaw)
-
         if (testVel !== this.trackingData[entityId].info.avgSpeed) this.trackingData[entityId].info.avgSpeed = testVel;
     }
 
@@ -59,7 +56,6 @@ export class EntityTracker {
                     const oldYaw = dirToYawAndPitch(this.trackingData[entityId].info.avgSpeed).yaw
                     const newYaw = dirToYawAndPitch(shiftPos).yaw
                     const dif = Math.abs(oldYaw - newYaw)
-                    console.log(oldYaw, newYaw, entity.yaw, dif)
                     if (dif > Math.PI / 4 && dif < 11 * Math.PI / 4) this.trackingData[entityId].info.tickInfo = [];
                 }
       
@@ -83,11 +79,10 @@ export class EntityTracker {
                 speed.z += pos.z - prevPos.z;
             }
 
+            //.scale() is inaccurate? lol
             speed.x = speed.x / length;
             speed.y = speed.y / length;
             speed.z = speed.z / length;
-
-            console.log(speed)
 
             if (speed !== this.trackingData[entityId].info.avgSpeed) this.trackingData[entityId].info.avgSpeed = speed;
         }
@@ -122,7 +117,7 @@ export class EntityTracker {
             speed.y = speed.y / this.trackingData[entityId].info.tickInfo.length;
             speed.z = speed.z / this.trackingData[entityId].info.tickInfo.length;
 
-            console.log(speed)
+        
 
             if (speed !== this.trackingData[entityId].info.avgSpeed) this.trackingData[entityId].info.avgSpeed = speed;
         }
