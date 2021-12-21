@@ -6,7 +6,6 @@ import { EntityTracker } from "./entityTracker";
 import { Vec3 } from "vec3";
 import { AABB,  InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
 import { getEntityAABB } from "../calc/entityUtils";
-import { Item } from "prismarine-item";
 
 const emptyVec = new Vec3(0, 0, 0);
 const dv = Math.PI / 360;
@@ -78,7 +77,7 @@ export class ShotPlanner {
     }
 
     private shiftTargetPositions(target: AABBComponents, avgSpeed: Vec3, ...shotInfo: CheckShotInfo[]) {
-        const newInfo = shotInfo.map((i) => (i.shift ? target.position.clone().add(avgSpeed.clone().scale(i.ticks + 5)) : target.position)); //weird monkey patch.
+        const newInfo = shotInfo.map((i) => (i.shift ? target.position.clone().add(avgSpeed.clone().scale(Math.ceil(i.ticks) + 5)) : target.position)); //weird monkey patch.
         const allInfo: { target: AABBComponents; info: CheckShotInfo[] }[] = [];
         for (const position of newInfo) {
             const yaw = getTargetYaw(this.bot.entity.position, position);
@@ -122,7 +121,7 @@ export class ShotPlanner {
                     const avgPitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
                     const avgTicks = hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length;
                     return { yaw, pitch: avgPitch, ticks: Math.floor(avgTicks), shift: shiftPos };
-                } else if (pitch > PIOver3 && shot.nearestDistance < 2) {
+                } else if (pitch > PIOver3 && shot.nearestDistance < 1) {
                     shiftPos = false;
                     hittingData.push({ pitch, ticks: shot.totalTicks });
                 }
@@ -150,7 +149,7 @@ export class ShotPlanner {
                     this.intercepter, this.weapon
                 );
                 const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: true })!;
-                if (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 2)) {
+                if (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 1)) {
                     return { hit: true, yaw, pitch, ticks: shot.totalTicks, shotInfo: shot };
                 }
             }
@@ -182,7 +181,7 @@ export class ShotPlanner {
                     possibleShotData.push({ yaw, pitch: avgPitch, ticks: Math.floor(avgTicks), shift: shiftPos });
                     hittingData = [];
                     shiftPos = true;
-                } else if (pitch > PIOver3 && shot.nearestDistance < 2) {
+                } else if (pitch > PIOver3 && shot.nearestDistance < 1) {
                     // console.log(pitch, shot.nearestDistance)
                     shiftPos = false;
                     hittingData.push({ pitch, ticks: shot.totalTicks });
