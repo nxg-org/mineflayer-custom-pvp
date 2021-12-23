@@ -5,7 +5,7 @@ import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir 
 import { EntityTracker } from "./entityTracker";
 import { Vec3 } from "vec3";
 import { AABB,  InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
-import { getEntityAABB } from "../calc/entityUtils";
+import { getEntityAABB } from "../calc/aabbUtils";
 
 const emptyVec = new Vec3(0, 0, 0);
 const dv = Math.PI / 360;

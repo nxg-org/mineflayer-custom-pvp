@@ -120,8 +120,8 @@ export class BowPVP {
         this.useOffhand = false;
         // if (!this.bot.util.inv.getHandWithItem(true)?.name.includes("firework")) {
         const ammo = this.bot.util.inv.getAllItems().find(item => item.name.includes("firework"))!
-        this.bot.util.inv.customEquip(ammo, this.bot.util.inv.getHand(!this.useOffhand))
-        this.bot.util.inv.customEquip(weapon, this.bot.util.inv.getHand(this.useOffhand))
+        await this.bot.util.inv.customEquip(ammo, this.bot.util.inv.getHand(!this.useOffhand))
+        await this.bot.util.inv.customEquip(weapon, this.bot.util.inv.getHand(this.useOffhand))
         return true;
         // } 
     }
