@@ -1,11 +1,6 @@
 version: 2
 updates:
-   # Maintain dependencies for yarn
-  - package-ecosystem: "yarn"
-    directory: "/" # Location of package manifests
-    schedule:
-      interval: "daily"
-      
+
    # Maintain dependencies for npm
   - package-ecosystem: "npm"
     directory: "/"
