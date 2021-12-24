@@ -20,9 +20,9 @@
     uuid "^8.3.0"
 
 "@nxg-org/mineflayer-trajectories@^1.0.1":
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/@nxg-org/mineflayer-trajectories/-/mineflayer-trajectories-1.0.3.tgz#eaea385de272fff500f55846ae4b817531c7d0b8"
-  integrity sha512-3rw9Fpa8rOSVZyJIQ8nvyjPcylyEwnqdaCroklBYFxglxiDwdo6/wnzyLNfoHPVZxt2g4M3iwisu48V+qi2puQ==
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/@nxg-org/mineflayer-trajectories/-/mineflayer-trajectories-1.0.4.tgz#fa1845f736529baf2faea411ca069de7e71de93c"
+  integrity sha512-DKlBtRG/R+jaTY5JwtuYU/TdauJmcXaD5kjJxVIUC5baiKjGoFlKzt46g6t4NBeD3Zd5SmFDXF5DZsBgwq1r2w==
   dependencies:
     "@nxg-org/mineflayer-util-plugin" "^1.3.6"
     minecraft-data "^2.97.0"
