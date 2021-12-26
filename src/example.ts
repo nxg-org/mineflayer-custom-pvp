@@ -18,7 +18,6 @@ bot.once("spawn", () => {
     bot.bowpvp.useOffhand = true
 });
 
-
 bot.on("chat", async (username, message) => {
     const split = message.split(" ");
     switch (split[0]) {
