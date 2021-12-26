@@ -231,7 +231,7 @@ export class BowPVP {
             case "crossbow":
             case "crossbow_firework":
                 const weaponHand = this.bot.util.inv.getHandWithItem(this.useOffhand);
-                if (!weaponHand) return console.log("cant find a thing")
+                if (!weaponHand) break;
                 const isEnchanted = weaponHand.enchants.find((enchant) => enchant.name === "quick_charge");
                 this.waitTime = 1250 - (isEnchanted ? isEnchanted.lvl : 0) * 250;
                 break;
