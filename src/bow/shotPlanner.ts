@@ -24,10 +24,6 @@ export class ShotPlanner {
         this.tracker = new EntityTracker(bot);
     }
 
-    public get originVel(): Vec3 {
-        return this.bot.entity.velocity.clone().translate(0, this.bot.entity.onGround ? -this.bot.entity.velocity.y : 0, 0);
-    }
-
     private isShotValid(shotInfo1: CheckedShot | BasicShotInfo, target: Vec3, pitch: number) {
         let shotInfo = (shotInfo1 as CheckedShot).shotInfo;
         if (!shotInfo) shotInfo = shotInfo1 as BasicShotInfo;
@@ -93,8 +89,8 @@ export class ShotPlanner {
 
     public checkForBlockIntercepts(target: AABBComponents, ...shots: CheckShotInfo[]): CheckedShot {
         for (const { pitch, ticks, yaw } of shots) {
-            const initShot = ShotFactory.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel },
+            const initShot = ShotFactory.fromPlayer(
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.bot.entity.velocity, onGround: this.bot.entity.onGround },
                 this.intercepter,
                 this.weapon
             );
@@ -111,8 +107,8 @@ export class ShotPlanner {
 
         for (let pitch = minPitch + dv; pitch < PIOver2; pitch += dv) {
             if (pitch > PIOver3) shift = true;
-            const initShot = ShotFactory.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel },
+            const initShot = ShotFactory.fromPlayer(
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.bot.entity.velocity, onGround: this.bot.entity.onGround },
                 this.intercepter,
                 this.weapon
             );
@@ -142,7 +138,7 @@ export class ShotPlanner {
             inbetween = inbetween.map((y) => y + Math.sign(orgYaw - y) * 0.02);
             for (const yaw of inbetween) {
                 const initShot = ShotFactory.fromShootingPlayer(
-                    { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel },
+                    { position: this.bot.entity.position, yaw, pitch, velocity: this.bot.entity.velocity, onGround: this.bot.entity.onGround },
                     this.intercepter,
                     this.weapon
                 );
@@ -163,8 +159,8 @@ export class ShotPlanner {
 
         for (let pitch = -PIOver2; pitch < PIOver2; pitch += dv) {
             if (pitch > PIOver3) shift = true;
-            const initShot = ShotFactory.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel },
+            const initShot = ShotFactory.fromPlayer(
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.bot.entity.velocity, onGround: this.bot.entity.onGround },
                 this.intercepter,
                 this.weapon
             );
