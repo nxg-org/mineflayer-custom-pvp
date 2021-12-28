@@ -4,7 +4,7 @@ import { Entity } from "prismarine-entity";
 import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir } from "../calc/mathUtilts";
 import { EntityTracker } from "./entityTracker";
 import { Vec3 } from "vec3";
-import { AABB,  InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
+import { AABB, InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
 import { getEntityAABB } from "../calc/aabbUtils";
 
 const emptyVec = new Vec3(0, 0, 0);
@@ -16,7 +16,7 @@ type pitchAndTicks = { pitch: number; ticks: number };
 type CheckShotInfo = { yaw: number; pitch: number; ticks: number; shift?: boolean };
 export type CheckedShot = { hit: boolean; yaw: number; pitch: number; ticks: number; shotInfo: BasicShotInfo | null };
 export class ShotPlanner {
-    public weapon: string = "bow"
+    public weapon: string = "bow";
     private intercepter: InterceptFunctions;
     private tracker: EntityTracker;
     constructor(private bot: Bot) {
@@ -77,7 +77,9 @@ export class ShotPlanner {
     }
 
     private shiftTargetPositions(target: AABBComponents, avgSpeed: Vec3, ...shotInfo: CheckShotInfo[]) {
-        const newInfo = shotInfo.map((i) => (i.shift ? target.position.clone().add(avgSpeed.clone().scale(Math.ceil(i.ticks) + 5)) : target.position)); //weird monkey patch.
+        const newInfo = shotInfo.map((i) =>
+            i.shift ? target.position.clone().add(avgSpeed.clone().scale(Math.ceil(i.ticks) + 5)) : target.position
+        ); //weird monkey patch.
         const allInfo: { target: AABBComponents; info: CheckShotInfo[] }[] = [];
         for (const position of newInfo) {
             const yaw = getTargetYaw(this.bot.entity.position, position);
@@ -93,8 +95,9 @@ export class ShotPlanner {
     public checkForBlockIntercepts(target: AABBComponents, ...shots: CheckShotInfo[]): CheckedShot {
         for (const { pitch, ticks, yaw } of shots) {
             const initShot = ShotFactory.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
-                this.intercepter, this.weapon
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel },
+                this.intercepter,
+                this.weapon
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: true })!;
             if (this.isShotValid(shot, target.position, Number(pitch)))
@@ -104,33 +107,28 @@ export class ShotPlanner {
     }
 
     public getNextShot(target: AABBComponents, yaw: number, minPitch: number = -PIOver2): CheckShotInfo {
-        let isHitting: boolean = false;
-        let initHit: boolean = false;
-        let shiftPos: boolean = true;
+        let shift: boolean = true;
         let hittingData: pitchAndTicks[] = [];
 
         for (let pitch = minPitch + dv; pitch < PIOver2; pitch += dv) {
+            if (pitch > PIOver3) shift = true;
             const initShot = ShotFactory.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
-                this.intercepter, this.weapon
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel },
+                this.intercepter,
+                this.weapon
             );
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false })!;
             if (!shot.intersectPos) {
-                isHitting = false;
                 if (hittingData.length !== 0) {
-                    const avgPitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
-                    const avgTicks = hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length;
-                    return { yaw, pitch: avgPitch, ticks: Math.floor(avgTicks), shift: shiftPos };
+                    const pitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
+                    const ticks = Math.ceil(hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length);
+                    return { yaw, pitch, ticks, shift };
                 } else if (pitch > PIOver3 && shot.nearestDistance < 1) {
-                    shiftPos = false;
                     hittingData.push({ pitch, ticks: shot.totalTicks });
                 }
                 continue;
             }
-            initHit = hittingData.length === 0;
             hittingData.push({ pitch, ticks: shot.totalTicks });
-            if (initHit) isHitting = true;
-            if (isHitting) continue;
         }
         return { yaw: NaN, pitch: NaN, ticks: NaN };
     }
@@ -145,8 +143,9 @@ export class ShotPlanner {
             inbetween = inbetween.map((y) => y + Math.sign(orgYaw - y) * 0.02);
             for (const yaw of inbetween) {
                 const initShot = ShotFactory.fromShootingPlayer(
-                    { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
-                    this.intercepter, this.weapon
+                    { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel },
+                    this.intercepter,
+                    this.weapon
                 );
                 const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: true })!;
                 if (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 1)) {
@@ -160,43 +159,30 @@ export class ShotPlanner {
     //TODO: This is too expensive. Will aim at offset off foot instead of calc'ing all hits and averaging.
     public getAllPossibleShots(target: AABBComponents, yaw: number) {
         let possibleShotData: CheckShotInfo[] = [];
-        let isHitting: boolean = false;
-        let initHit: boolean = false;
-        let shiftPos: boolean = true;
+        let shift: boolean = true;
         let hittingData: pitchAndTicks[] = [];
 
         for (let pitch = -PIOver2; pitch < PIOver2; pitch += dv) {
+            if (pitch > PIOver3) shift = true;
             const initShot = ShotFactory.fromShootingPlayer(
-                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel,  },
-                this.intercepter, this.weapon
+                { position: this.bot.entity.position, yaw, pitch, velocity: this.originVel },
+                this.intercepter,
+                this.weapon
             );
-            const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false });
-            if (!shot) continue;
-            // console.log(yaw, pitch, shot?.nearestDistance)
+            const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false })!;
             if (!shot.intersectPos) {
-                isHitting = false;
                 if (hittingData.length !== 0) {
                     const avgPitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
                     const avgTicks = hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length;
-                    possibleShotData.push({ yaw, pitch: avgPitch, ticks: Math.floor(avgTicks), shift: shiftPos });
+                    possibleShotData.push({ yaw, pitch: avgPitch, ticks: Math.ceil(avgTicks), shift });
                     hittingData = [];
-                    shiftPos = true;
                 } else if (pitch > PIOver3 && shot.nearestDistance < 1) {
-                    // console.log(pitch, shot.nearestDistance)
-                    shiftPos = false;
                     hittingData.push({ pitch, ticks: shot.totalTicks });
-                    // possibleShotData.push({ yaw, pitch, ticks: shot.totalTicks, shift: true });
                 }
                 continue;
             }
-
-            initHit = hittingData.length === 0;
             hittingData.push({ pitch, ticks: shot.totalTicks });
-            if (initHit) isHitting = true;
-            if (isHitting) continue;
         }
-
-        // console.log(possibleShotData)
         return possibleShotData;
     }
 }

@@ -15,7 +15,7 @@ bot.loadPlugin(customPVP);
 
 bot.once("spawn", () => {
     bot.swordpvp.critConfig.mode = "packet"
-    bot.bowpvp.useOffhand = true
+    bot.bowpvp.useOffhand = false
 });
 
 
