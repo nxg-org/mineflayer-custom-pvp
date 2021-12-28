@@ -22,11 +22,10 @@ export class ShotPlanner {
     constructor(private bot: Bot) {
         this.intercepter = new InterceptFunctions(bot);
         this.tracker = new EntityTracker(bot);
-        bot.once("spawn", () => this.tracker.trackEntity(this.bot.entity));
     }
 
     public get originVel(): Vec3 {
-        return this.tracker.getEntitySpeed(this.bot.entity);
+        return this.bot.entity.velocity.clone().translate(0, this.bot.entity.onGround ? -this.bot.entity.velocity.y : 0, 0);
     }
 
     private isShotValid(shotInfo1: CheckedShot | BasicShotInfo, target: Vec3, pitch: number) {
@@ -172,9 +171,9 @@ export class ShotPlanner {
             const shot = initShot.hitsEntity(target, { yawChecked: true, blockCheck: false })!;
             if (!shot.intersectPos) {
                 if (hittingData.length !== 0) {
-                    const avgPitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
-                    const avgTicks = hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length;
-                    possibleShotData.push({ yaw, pitch: avgPitch, ticks: Math.ceil(avgTicks), shift });
+                    const pitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
+                    const ticks = Math.ceil(hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length);
+                    possibleShotData.push({ yaw, pitch, ticks, shift });
                     hittingData = [];
                 } else if (pitch > PIOver3 && shot.nearestDistance < 1) {
                     hittingData.push({ pitch, ticks: shot.totalTicks });
