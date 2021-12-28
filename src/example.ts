@@ -14,7 +14,7 @@ const bot = createBot({
 bot.loadPlugin(customPVP);
 
 bot.once("spawn", () => {
-    bot.swordpvp.critConfig.mode = "packet"
+    bot.swordpvp.critConfig.mode = "shorthop"
     bot.bowpvp.useOffhand = false
 });
 

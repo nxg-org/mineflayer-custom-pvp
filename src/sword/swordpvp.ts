@@ -16,7 +16,7 @@ export const attackSpeeds = {
     golden_sword: 1.7,
     stone_sword: 1.7,
     iron_sword: 1.7,
-    diamond_sword: 1.7,
+    diamond_sword: 1.6,
     netherite_sword: 1.7,
     trident: 1.1,
     wooden_shovel: 1.1,
@@ -151,9 +151,7 @@ export class SwordPvp {
 
     async checkForTargetShield(packet: any) {
         if (!this.updateForTargetShielding) return;
-        //key: 8 = shielding, 9 = regen for 1.17. VERY INTERESTING.
         if (!packet.entityId || !packet.metadata || packet.metadata.length === 0) return;
-
         if (!packet.metadata[0].key || packet.metadata[0].key !== 8) return;
         const entity = this.bot.entities[packet.entityId];
         if (!entity || entity !== (!!this.target ? this.target : this.lastTarget)) return;
@@ -254,19 +252,19 @@ export class SwordPvp {
             this.bot.on("entityUpdate", listener);
         });
         health = Math.round((health - newHealth) * 100) / 100;
-        // if (!isNaN(health))
-        // console.log(
-        //     `Dealt ${health} damage. Target ${this.target?.username} has ${
-        //         Math.round(this.getHealth(this.target?.metadata) * 100) / 100
-        //     } health left.`
-        // );
+        if (!isNaN(health))
+        console.log(
+            `Dealt ${health} damage. Target ${this.target?.username} has ${
+                Math.round(this.getHealth(this.target?.metadata) * 100) / 100
+            } health left.`
+        );
     }
 
     async causeCritical(): Promise<boolean> {
         if (!this.critConfig.enabled || !this.target) return false;
         switch (this.critConfig.mode) {
             case "packet":
-                if (this.timeToNextAttack >= 0) return false;
+                if (this.timeToNextAttack !== -1) return false;
                 if (!this.wasInRange) return false;
                 // this.bot._client.write("position", { ...this.bot.entity.position, onGround: true });
                 this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 0.1625, 0), onGround: false });
@@ -288,7 +286,6 @@ export class SwordPvp {
                 if (this.timeToNextAttack !== 7) return false;
                 if (!this.bot.entity.onGround) return false;
                 if (this.target.position.distanceTo(this.bot.entity.position) > this.attackRange + 1) return false;
-                console.log("jump")
                 this.bot.setControlState("jump", true);
                 this.bot.setControlState("jump", false)
                 return true;
@@ -350,17 +347,11 @@ export class SwordPvp {
             this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
             return;
         }
+        // let health = this.getHealth(this.target.metadata);
+        this.bot.attack(this.target);
+        // this.logHealth(health);
 
-        const target = this.target;
-
-        if (target !== this.target) throw "Target changed!";
-
-        let health = this.getHealth(this.target.metadata);
-        this.bot.attack(target);
-
-        this.logHealth(health);
-
-        this.bot.emit("attackedTarget", target);
+        this.bot.emit("attackedTarget", this.target);
 
         this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
     }
