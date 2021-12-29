@@ -1,9 +1,9 @@
 import { Bot } from "mineflayer";
 import { BasicShotInfo, projectileGravity, ShotFactory, trajectoryInfo } from "@nxg-org/mineflayer-trajectories";
-import { InterceptFunctions, AABB } from "@nxg-org/mineflayer-util-plugin";
-import { Entity } from "prismarine-entity";
-import { Block } from "prismarine-block";
-import { Vec3 } from "vec3";
+import { InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
+import type { Entity } from "prismarine-entity";
+import type { Block } from "prismarine-block";
+import type { Vec3 } from "vec3";
 
 type InfoBoundToEntity = { entity: Entity; info: BasicShotInfo };
 
@@ -42,7 +42,7 @@ export class ProjectileTracker {
         return hittingArrows;
     }
 
-    getHighestPriorityProjectile(): InfoBoundToEntity {
+    getHighestPriorityProjectile(): InfoBoundToEntity | null {
         return this.getIncomingProjectiles().sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null;
     }
 
@@ -95,7 +95,6 @@ export class ProjectileTracker {
     }
 
     getShotDestination(entity: Entity): { entity: Entity; shotInfo: BasicShotInfo }[] | null {
-        // const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
         const knownWeapons = Object.keys(trajectoryInfo);
         if (knownWeapons.includes(entity.heldItem?.name ?? entity.equipment[1]?.name)) {
             let shot;
@@ -116,7 +115,6 @@ export class ProjectileTracker {
     }
 
     getProjectileDestination(entity: Entity): { entity: Entity; shotInfo: BasicShotInfo }[] | null {
-        // const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
         const knownProjectiles = Object.keys(projectileGravity)
         if (entity.name! in knownProjectiles) {
             let shot = ShotFactory.fromEntity(entity, this.intercepter);

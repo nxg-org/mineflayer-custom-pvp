@@ -30,8 +30,7 @@ function equipShield() {
 }
 
 bot.on("physicsTick", () => {
-    // const target = bot.nearestEntity(e => e.username === "Generel_Schwerz")
-    // if (target) console.log(bot.tracker.getShotDestination(target))
+    if (!defend) return;
     const entity = bot.tracker.getHighestPriorityEntity();
     if (entity) {
         bot.lookAt(entity.entity.position.offset(0, 1.6, 0), true);
@@ -42,8 +41,7 @@ bot.on("physicsTick", () => {
 });
 
 bot.on("entityMoved", async (entity) => {
-    // if (checkedEntities[entity.id]) return;
-    // checkedEntities[entity.id] = entity;
+    if (!defend) return;
     if (!Object.keys(projectileGravity).includes(entity.name!)) return;
     const pos = bot.tracker.getHighestPriorityProjectile()?.entity?.position;
     if (pos) {
