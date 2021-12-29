@@ -18,10 +18,8 @@ export type CheckedShot = { hit: boolean; yaw: number; pitch: number; ticks: num
 export class ShotPlanner {
     public weapon: string = "bow";
     private intercepter: InterceptFunctions;
-    private tracker: EntityTracker;
     constructor(private bot: Bot) {
         this.intercepter = new InterceptFunctions(bot);
-        this.tracker = new EntityTracker(bot);
     }
 
     private isShotValid(shotInfo1: CheckedShot | BasicShotInfo, target: Vec3, pitch: number) {
@@ -73,7 +71,7 @@ export class ShotPlanner {
 
     private shiftTargetPositions(target: AABBComponents, avgSpeed: Vec3, ...shotInfo: CheckShotInfo[]) {
         const newInfo = shotInfo.map((i) =>
-            i.shift ? target.position.clone().add(avgSpeed.clone().scale(Math.ceil(i.ticks) + 5)) : target.position
+            i.shift ? target.position.clone().add(avgSpeed.clone().scale(i.ticks + 4)) : target.position
         ); //weird monkey patch.
         const allInfo: { target: AABBComponents; info: CheckShotInfo[] }[] = [];
         for (const position of newInfo) {
@@ -116,7 +114,7 @@ export class ShotPlanner {
             if (!shot.intersectPos) {
                 if (hittingData.length !== 0) {
                     const pitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
-                    const ticks = Math.ceil(hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length);
+                    const ticks = hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length;
                     return { yaw, pitch, ticks, shift };
                 } else if (pitch > PIOver3 && shot.nearestDistance < 1) {
                     hittingData.push({ pitch, ticks: shot.totalTicks });

@@ -1,7 +1,6 @@
 import { Bot } from "mineflayer";
 import { BasicShotInfo, projectileGravity, ShotFactory, trajectoryInfo } from "@nxg-org/mineflayer-trajectories";
 import { InterceptFunctions, AABB } from "@nxg-org/mineflayer-util-plugin";
-import { getEntityAABB } from "../calc/aabbUtils";
 import { Entity } from "prismarine-entity";
 import { Block } from "prismarine-block";
 import { Vec3 } from "vec3";
@@ -17,7 +16,7 @@ export class ProjectileTracker {
 
     getIncomingArrow(): InfoBoundToEntity | null {
         const arrowInfos = this.getIncomingArrows();
-        return arrowInfos.sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null
+        return arrowInfos.sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null;
     }
 
     getIncomingArrows(): InfoBoundToEntity[] {
@@ -44,7 +43,7 @@ export class ProjectileTracker {
     }
 
     getHighestPriorityProjectile(): InfoBoundToEntity {
-        return this.getIncomingProjectiles().sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null
+        return this.getIncomingProjectiles().sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null;
     }
 
     allProjectileInfo(): { entity: Entity; info: { block: Block | null; hitPos: Vec3 | null; totalTicks: number } }[] {
@@ -59,13 +58,14 @@ export class ProjectileTracker {
         return hittingArrows;
     }
 
-
     getAimingMobs(): InfoBoundToEntity[] {
         const hittingArrows = [];
         const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
-        for (const entity of Object.values(this.bot.entities).filter((e) => e.name === "skeleton" || e.name === "piglin" && e.heldItem?.name.includes("bow"))) {
+        for (const entity of Object.values(this.bot.entities).filter(
+            (e) => e.name === "skeleton" || (e.name === "piglin" && e.heldItem?.name.includes("bow"))
+        )) {
             const init = ShotFactory.fromMob(entity, this.intercepter);
-            const info = init.hitsEntity(aabbComponents)
+            const info = init.hitsEntity(aabbComponents);
             if (!!info) hittingArrows.push({ entity, info });
         }
         return hittingArrows;
@@ -76,10 +76,10 @@ export class ProjectileTracker {
         const hittingArrows = [];
         const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
         const knownWeapons = Object.keys(trajectoryInfo);
-        for (const entity of Object.values(this.bot.entities).filter(e => e.type === "player" && e !== this.bot.entity)) {
-            if (knownWeapons.includes(entity.heldItem?.name ?? entity.equipment[1]?.name)) {
+        for (const entity of Object.values(this.bot.entities).filter((e) => e.type === "player" && e !== this.bot.entity)) {
+            if (knownWeapons.includes(entity.heldItem?.name)) {
                 const init = ShotFactory.fromPlayer(entity, this.intercepter);
-                const info = init.hitsEntity(aabbComponents)
+                const info = init.hitsEntity(aabbComponents);
                 if (!!info) hittingArrows.push({ entity, info });
             }
         }
@@ -87,11 +87,42 @@ export class ProjectileTracker {
     }
 
     getAimingEntities(): InfoBoundToEntity[] {
-        return this.getAimingMobs().concat(this.getAimingPlayers())
+        return this.getAimingMobs().concat(this.getAimingPlayers());
     }
 
     getHighestPriorityEntity(): InfoBoundToEntity | null {
-        return this.getAimingEntities().sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null
+        return this.getAimingEntities().sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null;
     }
 
+    getShotDestination(entity: Entity): { entity: Entity; shotInfo: BasicShotInfo }[] | null {
+        // const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
+        const knownWeapons = Object.keys(trajectoryInfo);
+        if (knownWeapons.includes(entity.heldItem?.name ?? entity.equipment[1]?.name)) {
+            let shot;
+            switch (entity.type) {
+                case "player":
+                    shot = ShotFactory.fromPlayer(entity, this.intercepter);
+                    break;
+                case "mob":
+                    shot = ShotFactory.fromMob(entity, this.intercepter);
+                    break;
+                default:
+                    throw `Invalid entity type: ${entity.type}`;
+            }
+            const info = shot.hitsEntities(true, ...Object.values(this.bot.entities).filter((e) => (e.type === "player" || e.type === "mob") && entity !== e));
+            return info as { entity: Entity; shotInfo: BasicShotInfo }[]
+        }
+        return null;
+    }
+
+    getProjectileDestination(entity: Entity): { entity: Entity; shotInfo: BasicShotInfo }[] | null {
+        // const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
+        const knownProjectiles = Object.keys(projectileGravity)
+        if (entity.name! in knownProjectiles) {
+            let shot = ShotFactory.fromEntity(entity, this.intercepter);
+            const info = shot.hitsEntities(true, ...Object.values(this.bot.entities).filter((e) => e.type === "player" || e.type === "mob"));
+            return info as { entity: Entity; shotInfo: BasicShotInfo }[]
+        }
+        return null;
+    }
 }

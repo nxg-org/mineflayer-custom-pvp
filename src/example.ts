@@ -3,9 +3,10 @@ import customPVP from "./index";
 import { Vec3 } from "vec3";
 import { Entity } from "prismarine-entity";
 import { vectorMagnitude } from "./calc/mathUtilts";
-import { ShotFactory } from "@nxg-org/mineflayer-trajectories";
+import { projectileGravity, ShotFactory } from "@nxg-org/mineflayer-trajectories";
 
 let target: Entity | null = null;
+let defend = false;
 
 const bot = createBot({
     username: "pvp-testing",
@@ -24,37 +25,40 @@ const checkedEntities: { [id: number]: Entity } = {};
 function equipShield() {
     const shield = bot.util.inv.getAllItemsExceptCurrent("off-hand").find((e) => e.name === "shield");
     if (shield) {
-        console.log("hi");
         bot.util.inv.customEquip(shield, "off-hand");
     }
 }
 
 bot.on("physicsTick", () => {
+    // const target = bot.nearestEntity(e => e.username === "Generel_Schwerz")
+    // if (target) console.log(bot.tracker.getShotDestination(target))
     const entity = bot.tracker.getHighestPriorityEntity();
-    console.log(!!entity)
     if (entity) {
-        bot.lookAt(entity.entity.position);
+        bot.lookAt(entity.entity.position.offset(0, 1.6, 0), true);
+        // if (!bot.util.entity.isOffHandActive()) bot.activateItem(true);
+    } else {
+        // bot.deactivateItem();
+    }
+});
+
+bot.on("entityMoved", async (entity) => {
+    // if (checkedEntities[entity.id]) return;
+    // checkedEntities[entity.id] = entity;
+    if (!Object.keys(projectileGravity).includes(entity.name!)) return;
+    const pos = bot.tracker.getHighestPriorityProjectile()?.entity?.position;
+    if (pos) {
+        bot.lookAt(pos, true);
+        equipShield();
         if (!bot.util.entity.isOffHandActive()) bot.activateItem(true);
     } else {
         bot.deactivateItem();
     }
 });
 
-bot.on("entityMoved", async (entity) => {
-    const test = ShotFactory.fromEntity(entity)
-    console.log(entity.velocity, test.initialVel)
-    const pos = bot.tracker.getHighestPriorityProjectile()?.entity?.position
-    if (pos) {
-        bot.lookAt(pos, true);
-        equipShield();
-        if (!bot.util.entity.isOffHandActive()) bot.activateItem(true);
-    }
-});
-
-// bot.on("entityMoved", async (orgEntityData) => {
-//     if (checkedEntities[orgEntityData.id]) return;
-//     checkedEntities[orgEntityData.id] = orgEntityData;
-//     if (["arrow", "firework_rocket", "ender_pearl"].includes(orgEntityData.name!)) {
+// bot.on("entityMoved", async (entity) => {
+//     if (checkedEntities[entity.id]) return;
+//     checkedEntities[entity.id] = entity;
+//     if (["arrow", "firework_rocket", "ender_pearl"].includes(entity.name!)) {
 //         console.log(bot.tracker.getIncomingArrows())
 //     }
 // });
@@ -88,6 +92,12 @@ bot.on("chat", async (username, message) => {
             break;
         case "clear":
             console.clear();
+            break;
+        case "defend":
+            defend = true;
+            break;
+        case "defendstop":
+            defend = false;
             break;
     }
 });
