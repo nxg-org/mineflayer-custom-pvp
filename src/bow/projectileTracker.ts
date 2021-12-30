@@ -6,6 +6,8 @@ import type { Block } from "prismarine-block";
 import type { Vec3 } from "vec3";
 
 type InfoBoundToEntity = { entity: Entity; info: BasicShotInfo };
+const knownProjectiles = Object.keys(projectileGravity);
+const knownWeapons = Object.keys(trajectoryInfo);
 
 export class ProjectileTracker {
     private intercepter: InterceptFunctions;
@@ -16,13 +18,14 @@ export class ProjectileTracker {
 
     getIncomingArrow(): InfoBoundToEntity | null {
         const arrowInfos = this.getIncomingArrows();
-        return arrowInfos.sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null;
+        return arrowInfos.sort((a, b) => a.entity.position.distanceTo(this.bot.entity.position) - b.entity.position.distanceTo(this.bot.entity.position))[0] ?? null;
     }
 
     getIncomingArrows(): InfoBoundToEntity[] {
         const hittingArrows = [];
         const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
-        for (const entity of Object.values(this.bot.entities).filter((e) => e.name?.includes("arrow"))) {
+        for (const entity of Object.values(this.bot.entities).filter((e) => e.name?.includes("arrow") && !e.onGround)) {
+            // assuming stopped.
             const init = ShotFactory.fromEntity(entity, this.intercepter);
             const info = init.hitsEntity(aabbComponents);
             if (!!info) hittingArrows.push({ entity, info });
@@ -33,8 +36,8 @@ export class ProjectileTracker {
     getIncomingProjectiles(): InfoBoundToEntity[] {
         const hittingArrows = [];
         const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
-        const knownProjectiles = Object.keys(projectileGravity);
-        for (const entity of Object.values(this.bot.entities).filter((e) => knownProjectiles.includes(e.name ?? "nope"))) {
+        for (const entity of Object.values(this.bot.entities).filter((e) => knownProjectiles.includes(e.name!) && !e.onGround)) {
+            // assuming stopped.
             const init = ShotFactory.fromEntity(entity, this.intercepter);
             const info = init.hitsEntity(aabbComponents);
             if (!!info) hittingArrows.push({ entity, info });
@@ -42,15 +45,24 @@ export class ProjectileTracker {
         return hittingArrows;
     }
 
-    getHighestPriorityProjectile(): InfoBoundToEntity | null {
-        return this.getIncomingProjectiles().sort((a, b) => a.info.totalTicks - b.info.totalTicks)[0] ?? null;
+    getHighestPriorityProjectile(doesDamage: boolean = true): InfoBoundToEntity | null {
+        const projs = this.getIncomingProjectiles();
+        if (doesDamage) {
+            return (
+                projs
+                    .filter((p) => p.entity.name! in ["arrow", "firework_rocket", "trident"])
+                    .sort((a, b) => a.entity.position.distanceTo(this.bot.entity.position) - b.entity.position.distanceTo(this.bot.entity.position))[0] ?? null
+            );
+        } else {
+            return projs.sort((a, b) => a.entity.position.distanceTo(this.bot.entity.position) - b.entity.position.distanceTo(this.bot.entity.position))[0] ?? null;
+        }
     }
 
     allProjectileInfo(): { entity: Entity; info: { block: Block | null; hitPos: Vec3 | null; totalTicks: number } }[] {
         const hittingArrows = [];
         const entities = Object.values(this.bot.entities);
-        const knownProjectiles = Object.keys(projectileGravity);
-        for (const entity of Object.values(this.bot.entities).filter((e) => knownProjectiles.includes(e.name ?? "nope"))) {
+        for (const entity of Object.values(this.bot.entities).filter((e) => knownProjectiles.includes(e.name!) && !e.onGround)) {
+            // assuming stopped.
             const init = ShotFactory.fromEntity(entity, this.intercepter);
             const info = init.calcToIntercept(true, entities);
             hittingArrows.push({ entity, info });
@@ -58,11 +70,11 @@ export class ProjectileTracker {
         return hittingArrows;
     }
 
-    getAimingMobs(): InfoBoundToEntity[] {
+    getMobsAimingAtBot(): InfoBoundToEntity[] {
         const hittingArrows = [];
         const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
         for (const entity of Object.values(this.bot.entities).filter(
-            (e) => e.name === "skeleton" || (e.name === "piglin" && e.heldItem?.name.includes("bow"))
+            (e) => e.name === ("skeleton" || e.name === "piglin") && e.heldItem?.name.includes("bow")
         )) {
             const init = ShotFactory.fromMob(entity, this.intercepter);
             const info = init.hitsEntity(aabbComponents);
@@ -72,10 +84,9 @@ export class ProjectileTracker {
     }
 
     //TODO: Make aim dynamic by reading heldItem metadata.
-    getAimingPlayers(): InfoBoundToEntity[] {
+    getPlayersAimingAtBot(): InfoBoundToEntity[] {
         const hittingArrows = [];
         const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
-        const knownWeapons = Object.keys(trajectoryInfo);
         for (const entity of Object.values(this.bot.entities).filter((e) => e.type === "player" && e !== this.bot.entity)) {
             if (knownWeapons.includes(entity.heldItem?.name)) {
                 const init = ShotFactory.fromPlayer(entity, this.intercepter);
@@ -87,7 +98,7 @@ export class ProjectileTracker {
     }
 
     getAimingEntities(): InfoBoundToEntity[] {
-        return this.getAimingMobs().concat(this.getAimingPlayers());
+        return this.getMobsAimingAtBot().concat(this.getPlayersAimingAtBot());
     }
 
     getHighestPriorityEntity(): InfoBoundToEntity | null {
@@ -95,7 +106,6 @@ export class ProjectileTracker {
     }
 
     getShotDestination(entity: Entity): { entity: Entity; shotInfo: BasicShotInfo }[] | null {
-        const knownWeapons = Object.keys(trajectoryInfo);
         if (knownWeapons.includes(entity.heldItem?.name ?? entity.equipment[1]?.name)) {
             let shot;
             switch (entity.type) {
@@ -108,18 +118,23 @@ export class ProjectileTracker {
                 default:
                     throw `Invalid entity type: ${entity.type}`;
             }
-            const info = shot.hitsEntities(true, ...Object.values(this.bot.entities).filter((e) => (e.type === "player" || e.type === "mob") && entity !== e));
-            return info as { entity: Entity; shotInfo: BasicShotInfo }[]
+            const info = shot.hitsEntities(
+                true,
+                ...Object.values(this.bot.entities).filter((e) => (e.type === "player" || e.type === "mob") && entity !== e)
+            );
+            return info as { entity: Entity; shotInfo: BasicShotInfo }[];
         }
         return null;
     }
 
     getProjectileDestination(entity: Entity): { entity: Entity; shotInfo: BasicShotInfo }[] | null {
-        const knownProjectiles = Object.keys(projectileGravity)
         if (entity.name! in knownProjectiles) {
             let shot = ShotFactory.fromEntity(entity, this.intercepter);
-            const info = shot.hitsEntities(true, ...Object.values(this.bot.entities).filter((e) => e.type === "player" || e.type === "mob"));
-            return info as { entity: Entity; shotInfo: BasicShotInfo }[]
+            const info = shot.hitsEntities(
+                true,
+                ...Object.values(this.bot.entities).filter((e) => e.type === "player" || e.type === "mob")
+            );
+            return info as { entity: Entity; shotInfo: BasicShotInfo }[];
         }
         return null;
     }

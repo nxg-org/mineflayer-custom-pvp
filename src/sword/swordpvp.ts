@@ -16,7 +16,7 @@ export const attackSpeeds = {
     golden_sword: 1.7,
     stone_sword: 1.7,
     iron_sword: 1.7,
-    diamond_sword: 1.6,
+    diamond_sword: 1.7,
     netherite_sword: 1.7,
     trident: 1.1,
     wooden_shovel: 1.1,
@@ -264,11 +264,11 @@ export class SwordPvp {
         if (!this.critConfig.enabled || !this.target) return false;
         switch (this.critConfig.mode) {
             case "packet":
-                if (this.timeToNextAttack !== -1) return false;
+                if (this.timeToNextAttack !== 0) return false;
                 if (!this.wasInRange) return false;
                 // this.bot._client.write("position", { ...this.bot.entity.position, onGround: true });
                 this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 0.1625, 0), onGround: false });
-                this.bot._client.write("position", { ...this.bot.entity.position, onGround: false });
+                this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 4.0E-6, 0), onGround: false });
                 this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 1.1e-6, 0), onGround: false });
                 this.bot._client.write("position", { ...this.bot.entity.position, onGround: false });
                 return true;

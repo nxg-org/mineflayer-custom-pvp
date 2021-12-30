@@ -17,7 +17,7 @@ const bot = createBot({
 bot.loadPlugin(customPVP);
 
 bot.once("spawn", () => {
-    bot.swordpvp.critConfig.mode = "shorthop";
+    bot.swordpvp.critConfig.mode = "hop";
     bot.bowpvp.useOffhand = false;
 });
 
@@ -81,6 +81,7 @@ bot.on("chat", async (username, message) => {
             target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);
             if (!target) return console.log("no entity");
             bot.swordpvp.attack(target);
+            bot.util.move.followEntityWithRespectRange(target, 2)
             break;
         case "rangestop":
             bot.bowpvp.stop();
@@ -96,6 +97,12 @@ bot.on("chat", async (username, message) => {
             break;
         case "defendstop":
             defend = false;
+            break;
+        case "packetmode":
+            bot.swordpvp.critConfig.mode = split[1] as any
+            break;
+        case "shieldmode":
+            bot.swordpvp.shieldConfig.mode = split[1] as any
             break;
     }
 });
