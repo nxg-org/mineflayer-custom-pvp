@@ -1,6 +1,5 @@
 import { Bot } from "mineflayer";
-import { BasicShotInfo, projectileGravity, ShotFactory, trajectoryInfo } from "@nxg-org/mineflayer-trajectories";
-import { InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
+import { BasicShotInfo, projectileGravity, ShotFactory, trajectoryInfo, InterceptFunctions } from "@nxg-org/mineflayer-trajectories";
 import type { Entity } from "prismarine-entity";
 import type { Block } from "prismarine-block";
 import type { Vec3 } from "vec3";

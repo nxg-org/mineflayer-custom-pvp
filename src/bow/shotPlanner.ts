@@ -1,10 +1,10 @@
 import { Bot } from "mineflayer";
-import { AABBComponents, BasicShotInfo, Shot, ShotFactory } from "@nxg-org/mineflayer-trajectories";
+import { AABBComponents, BasicShotInfo, Shot, ShotFactory, InterceptFunctions } from "@nxg-org/mineflayer-trajectories";
 import { Entity } from "prismarine-entity";
 import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir } from "../calc/mathUtilts";
 import { EntityTracker } from "./entityTracker";
 import { Vec3 } from "vec3";
-import { AABB, InterceptFunctions } from "@nxg-org/mineflayer-util-plugin";
+import { AABB } from "@nxg-org/mineflayer-util-plugin";
 import { getEntityAABB } from "../calc/aabbUtils";
 
 const emptyVec = new Vec3(0, 0, 0);
