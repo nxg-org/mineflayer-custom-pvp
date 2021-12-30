@@ -198,10 +198,10 @@ export class SwordPvp {
     // per tick.
     update() {
         if (!this.target) return;
+        this.checkRange();
         this.timeToNextAttack--;
         this.ticksSinceTargetAttack++;
         this.ticksSinceLastSwitch++;
-        this.checkRange();
         this.causeCritical();
         this.toggleShield();
         this.rotate();
