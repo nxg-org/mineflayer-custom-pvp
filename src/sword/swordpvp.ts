@@ -212,7 +212,7 @@ export class SwordPvp {
     trueDistance(): number {
         if (!this.target) return 10000;
         const { x, y, z } = this.bot.entity.position.offset(0, this.bot.entity.height, 0);
-        const aabb = this.bot.util.entity.getEntityAABB({ position: this.target.position, height: this.target.height, width: 0.3 });
+        const aabb = this.bot.util.entity.getEntityAABB(this.target);
         let dx = Math.max(aabb.minX - x, 0, x - aabb.maxX);
         let dy = Math.max(aabb.minY - y, 0, y - aabb.maxY);
         let dz = Math.max(aabb.minZ - z, 0, z - aabb.maxZ);

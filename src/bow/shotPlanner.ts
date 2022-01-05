@@ -92,8 +92,8 @@ export class ShotPlanner {
                 this.intercepter,
                 this.weapon
             );
-            const shot = initShot.hitsEntity(target, { yawChecked: false, blockCheck: true })!;
-            if (this.isShotValid(shot, target.position, Number(pitch)))
+            const shot = initShot.hitsEntity(target, { yawChecked: false, blockCheck: true })?.shotInfo;
+            if (!!shot && this.isShotValid(shot, target.position, Number(pitch)))
                 return { hit: true, yaw, pitch: Number(pitch), ticks, shotInfo: shot };
         }
         return { hit: false, yaw: NaN, pitch: NaN, ticks: NaN, shotInfo: null };
@@ -110,7 +110,8 @@ export class ShotPlanner {
                 this.intercepter,
                 this.weapon
             );
-            const shot = initShot.hitsEntity(target, { yawChecked: false, blockCheck: false })!;
+            const shot = initShot.hitsEntity(target, { yawChecked: false, blockCheck: false })?.shotInfo;
+            if (!shot) continue;
             if (!shot.intersectPos) {
                 if (hittingData.length !== 0) {
                     const pitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
@@ -140,8 +141,8 @@ export class ShotPlanner {
                     this.intercepter,
                     this.weapon
                 );
-                const shot = initShot.hitsEntity(target, { yawChecked: false, blockCheck: true })!;
-                if (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 1)) {
+                const shot = initShot.hitsEntity(target, { yawChecked: false, blockCheck: true })?.shotInfo;
+                if (!!shot && (shot.intersectPos || (pitch > PIOver3 && shot.nearestDistance < 1))) {
                     return { hit: true, yaw, pitch, ticks: shot.totalTicks, shotInfo: shot };
                 }
             }
@@ -162,7 +163,8 @@ export class ShotPlanner {
                 this.intercepter,
                 this.weapon
             );
-            const shot = initShot.hitsEntity(target, { yawChecked: false, blockCheck: false })!;
+            const shot = initShot.hitsEntity(target, { yawChecked: false, blockCheck: false })?.shotInfo;
+            if (!shot) continue;
             if (!shot.intersectPos) {
                 if (hittingData.length !== 0) {
                     const pitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.

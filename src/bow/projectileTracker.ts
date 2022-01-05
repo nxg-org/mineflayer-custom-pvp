@@ -27,7 +27,7 @@ export class ProjectileTracker {
             // assuming stopped.
             const init = ShotFactory.fromEntity(entity, this.intercepter);
             const info = init.hitsEntity(aabbComponents);
-            if (!!info) hittingArrows.push({ entity, info });
+            if (!!info) hittingArrows.push({ entity, info: info.shotInfo });
         }
         return hittingArrows;
     }
@@ -39,7 +39,7 @@ export class ProjectileTracker {
             // assuming stopped.
             const init = ShotFactory.fromEntity(entity, this.intercepter);
             const info = init.hitsEntity(aabbComponents);
-            if (!!info) hittingArrows.push({ entity, info });
+            if (!!info) hittingArrows.push({ entity, info: info.shotInfo });
         }
         return hittingArrows;
     }
@@ -77,7 +77,7 @@ export class ProjectileTracker {
         )) {
             const init = ShotFactory.fromMob(entity, this.intercepter);
             const info = init.hitsEntity(aabbComponents);
-            if (!!info) hittingArrows.push({ entity, info });
+            if (!!info) hittingArrows.push({ entity, info: info.shotInfo });
         }
         return hittingArrows;
     }
@@ -90,7 +90,7 @@ export class ProjectileTracker {
             if (knownWeapons.includes(entity.heldItem?.name)) {
                 const init = ShotFactory.fromPlayer(entity, this.intercepter);
                 const info = init.hitsEntity(aabbComponents);
-                if (!!info) hittingArrows.push({ entity, info });
+                if (!!info) hittingArrows.push({ entity, info: info.shotInfo });
             }
         }
         return hittingArrows;
