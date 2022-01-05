@@ -43,7 +43,9 @@ export class BowPVP {
      */
     public shotToEntity(entity: Entity, velocity?: Vec3) {
         if (!velocity) velocity = this.tracker.getEntitySpeed(entity);
-        return this.planner.shotToEntity(entity, velocity);
+        const shot = this.planner.shotToEntity(entity, velocity);
+        console.log(shot)
+        return shot
     }
 
     /**

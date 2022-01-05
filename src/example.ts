@@ -12,6 +12,7 @@ const bot = createBot({
     username: "pvp-testing",
     host: process.argv[2] ?? "localhost",
     port: Number(process.argv[3]) ?? 25565,
+    version: "1.17.1"
 });
 
 bot.loadPlugin(customPVP);
