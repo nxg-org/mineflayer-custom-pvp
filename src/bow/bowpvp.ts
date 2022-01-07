@@ -17,7 +17,7 @@ export class BowPVP {
     public useOffhand: boolean = false;
     public tracker: EntityTracker;
 
-    private target: Entity | null = null;
+    public target: Entity | null = null;
     private shotInit: number = performance.now();
     private shotCharging: boolean = false;
     private crossbowLoading: boolean = false;
@@ -43,9 +43,7 @@ export class BowPVP {
      */
     public shotToEntity(entity: Entity, velocity?: Vec3) {
         if (!velocity) velocity = this.tracker.getEntitySpeed(entity);
-        const shot = this.planner.shotToEntity(entity, velocity);
-        console.log(shot)
-        return shot
+        return this.planner.shotToEntity(entity, velocity);
     }
 
     /**
