@@ -34,15 +34,11 @@ export class ProjectileTracker {
 
     getIncomingProjectiles(): InfoBoundToEntity[] {
         const hittingArrows = [];
-        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.8, width: 0.6 };
+        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.6 };
         for (const entity of Object.values(this.bot.entities).filter((e) => knownProjectiles.includes(e.name!))) {
             // assuming stopped.
             const init = ShotFactory.fromEntity(entity, this.intercepter);
-            const info = init.hitsEntity(aabbComponents, {yawChecked: true, blockCheck: true});
-            for (const pos of init.points) {
-                const { x, y, z } = pos;
-                this.bot.chat(`/particle flame ${x} ${y} ${z} 0 0 0 0 1`);
-            }
+            const info = init.hitsEntity(aabbComponents);
             if (!!info && info.shotInfo.nearestDistance === 0) hittingArrows.push({ entity, info: info.shotInfo });
         }
         return hittingArrows;

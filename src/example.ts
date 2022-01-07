@@ -35,12 +35,12 @@ async function equipShield() {
 bot.on("physicsTick", () => {
     if (!defend) return;
     const entity = bot.tracker.getHighestPriorityEntity();
-    if (entity) {
-        bot.lookAt(entity.entity.position.offset(0, 1.6, 0), true);
-        // if (!bot.util.entity.isOffHandActive()) bot.activateItem(true);
-    } else {
-        // bot.deactivateItem();
-    }
+    // if (entity) {
+    //     bot.lookAt(entity.entity.position.offset(0, 1.6, 0), true);
+    //     // if (!bot.util.entity.isOffHandActive()) bot.activateItem(true);
+    // } else {
+    //     // bot.deactivateItem();
+    // }
 });
 
 bot.on("entityMoved", async (entity) => {
