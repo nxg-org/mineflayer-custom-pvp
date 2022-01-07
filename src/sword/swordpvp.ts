@@ -1,65 +1,14 @@
 import { Bot } from "mineflayer";
-import { pointToYawAndPitch, toNotchianPitch, toNotchianYaw } from "../calc/mathUtilts";
 import { Entity } from "prismarine-entity";
 import { Item } from "prismarine-item";
-import { Vec3 } from "vec3";
 import { promisify } from "util";
-import { once } from "events";
-import { kill } from "process";
+import { attack } from "../util";
+import { attackSpeeds, CriticalsConfig, RotateConfig, ShieldConfig, SwingBehaviorConfig } from "./sworddata";
 const sleep = promisify(setTimeout);
+
 /**
  * The main pvp manager plugin class.
  */
-
-export const attackSpeeds = {
-    wooden_sword: 1.7,
-    golden_sword: 1.7,
-    stone_sword: 1.7,
-    iron_sword: 1.7,
-    diamond_sword: 1.7,
-    netherite_sword: 1.7,
-    trident: 1.1,
-    wooden_shovel: 1.1,
-    golden_shovel: 1.1,
-    stone_shovel: 1.1,
-    iron_shovel: 1.1,
-    diamond_shovel: 1.1,
-    netherite_shovel: 1.1,
-    wooden_pickaxe: 1.2,
-    golden_pickaxe: 1.2,
-    stone_pickaxe: 1.2,
-    iron_pickaxe: 1.2,
-    diamond_pickaxe: 1.2,
-    netherite_pickaxe: 1.2,
-    wooden_axe: 0.8,
-    golden_axe: 1.1,
-    stone_axe: 0.8,
-    iron_axe: 0.9,
-    diamond_axe: 1.0,
-    netherite_axe: 1.1,
-    wooden_hoe: 1.1,
-    golden_hoe: 1.1,
-    stone_hoe: 2.0,
-    iron_hoe: 3.0,
-    diamond_hoe: 4.0,
-    netherite_hoe: 4.0,
-    other: 4.0,
-};
-
-export interface CriticalsConfig {
-    enabled: boolean;
-    mode: "packet" | "shorthop" | "hop";
-}
-
-export interface ShieldConfig {
-    enabled: boolean;
-    mode: "legit" | "blatant";
-}
-
-export interface RotateConfig {
-    enabled: boolean;
-    mode: "legit" | "instant" | "constant" | "silent" | "ignore";
-}
 export class SwordPvp {
     public timeToNextAttack: number = 0;
     public ticksSinceTargetAttack: number = 0;
@@ -68,6 +17,9 @@ export class SwordPvp {
     public viewDistance: number = 128;
     public attackRange: number = 3;
     public meleeAttackRate: MaxDamageOffset;
+    public swingConfig: SwingBehaviorConfig = {
+        mode: "fullswing"
+    }
     public critConfig: CriticalsConfig = {
         enabled: true,
         mode: "hop",
@@ -85,14 +37,10 @@ export class SwordPvp {
     public target?: Entity;
     public lastTarget?: Entity;
     public weaponOfChoice: string = "sword";
-    public metadataSlot: number = 0;
     public updateForTargetShielding: boolean = true;
 
     constructor(public bot: Bot) {
         this.meleeAttackRate = new MaxDamageOffset(this.bot);
-        this.bot.once("spawn", () => {
-            this.metadataSlot = this.bot.entity.metadata.findIndex((data) => Number(data) === 20);
-        });
         this.bot.on("physicsTick", () => this.update());
         this.bot.on("entityGone", (e) => {
             if (e === this.target) this.stop();
@@ -121,7 +69,7 @@ export class SwordPvp {
         if (heldItem?.name.includes(weapon)) {
             return heldItem;
         } else {
-            const item = this.bot.inventory.items().find((item) => item?.name.includes(weapon!));
+            const item = this.bot.util.inv.getAllItems().find((item) => item?.name.includes(weapon!));
             if (item) {
                 return item;
             }
@@ -168,9 +116,6 @@ export class SwordPvp {
                 if (switched) this.timeToNextAttack = this.meleeAttackRate.getTicks(this.getWeaponOfEntity(this.bot.entity));
             }
         }
-        // } else {
-        //     this.weaponOfChoice = state;
-        // }
 
         this.bot.emit("targetBlockingUpdate", entity, boolState);
     }
@@ -198,13 +143,14 @@ export class SwordPvp {
     // per tick.
     update() {
         if (!this.target) return;
-        this.checkRange();
+    
         this.timeToNextAttack--;
         this.ticksSinceTargetAttack++;
         this.ticksSinceLastSwitch++;
+        this.checkRange();
+        this.rotate();
         this.causeCritical();
         this.toggleShield();
-        this.rotate();
 
         if (this.timeToNextAttack === -1) this.attemptAttack();
     }
@@ -221,56 +167,50 @@ export class SwordPvp {
 
     checkRange() {
         if (!this.target) return;
-        if (this.timeToNextAttack < 0) return;
+        // if (this.timeToNextAttack < 0) return;
         const dist = this.target.position.distanceTo(this.bot.entity.position);
         if (dist > this.viewDistance) return this.stop();
         const inRange = this.trueDistance() <= this.attackRange;
-        if (!this.wasInRange && inRange) this.timeToNextAttack = 0;
+        if (!this.wasInRange && inRange && this.swingConfig.mode === "killaura") this.timeToNextAttack = 0;
         this.wasInRange = inRange;
     }
 
-    getHealth(metadata: object[]) {
-        if (!metadata) return 0;
-        let slot = metadata[this.metadataSlot] ? this.metadataSlot : metadata.findIndex((met) => Number(met) > 1 && Number(met) <= 20);
-        return Number(metadata[slot]) + (Number(metadata[slot + 4]) ?? 0);
-    }
 
     async logHealth(health: number) {
         if (!this.target) return;
         const newHealth: number = await new Promise((resolve, reject) => {
-            const listener = (entity: Entity) => {
-                if (entity === this.target) {
-                    resolve(this.getHealth(entity.metadata));
-                }
-                this.bot.off("entityUpdate", listener);
+            const listener = (packet: any) => {
+                const entityId = packet.entityId;
+                const entity = this.bot.entities[entityId];
+                if (entity !== this.target) return;
+                if ((packet.metadata as any[]).find((md) => md.key === 7) === -1) return;
+                resolve(this.bot.util.entity.getHealthChange(packet.metadata, entity));
             };
+            this.bot._client.removeListener("entity_metadata", listener);
             setTimeout(() => {
-                this.bot.off("entityUpdate", listener);
-                resolve(health);
-            }, 500); // reject after 200ms
+                this.bot._client.removeListener("entity_metadata", listener);
+                resolve(0);
+            }, 500);
 
-            this.bot.on("entityUpdate", listener);
+            this.bot._client.prependListener("entity_metadata", listener);
         });
-        health = Math.round((health - newHealth) * 100) / 100;
-        if (!isNaN(health))
-        console.log(
-            `Dealt ${health} damage. Target ${this.target?.username} has ${
-                Math.round(this.getHealth(this.target?.metadata) * 100) / 100
-            } health left.`
-        );
+
+        health = Math.round((health + newHealth) * 100) / 100;
+        if (!isNaN(health)) console.log(`Dealt ${newHealth} damage. Target ${this.target?.username} has ${health} health left.`);
     }
 
     async causeCritical(): Promise<boolean> {
         if (!this.critConfig.enabled || !this.target) return false;
         switch (this.critConfig.mode) {
             case "packet":
-                if (this.timeToNextAttack !== 0) return false;
+                if (this.timeToNextAttack !== -1) return false;
                 if (!this.wasInRange) return false;
                 // this.bot._client.write("position", { ...this.bot.entity.position, onGround: true });
                 this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 0.1625, 0), onGround: false });
-                this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 4.0E-6, 0), onGround: false });
+                this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 4.0e-6, 0), onGround: false });
                 this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 1.1e-6, 0), onGround: false });
                 this.bot._client.write("position", { ...this.bot.entity.position, onGround: false });
+                this.bot.entity.onGround = false;
                 return true;
             case "shorthop":
                 if (this.timeToNextAttack !== 1) return false;
@@ -283,11 +223,11 @@ export class SwordPvp {
                 this.bot.entity.position = this.bot.entity.position.set(dx, Math.floor(dy), dz);
                 return true;
             case "hop":
-                if (this.timeToNextAttack !== 7) return false;
+                if (this.timeToNextAttack !== 8) return false;
                 if (!this.bot.entity.onGround) return false;
                 if (this.target.position.distanceTo(this.bot.entity.position) > this.attackRange + 1) return false;
                 this.bot.setControlState("jump", true);
-                this.bot.setControlState("jump", false)
+                this.bot.setControlState("jump", false);
                 return true;
             default:
                 return false;
@@ -309,9 +249,8 @@ export class SwordPvp {
             } else if (!this.bot.util.entity.isOffHandActive() && shield && this.shieldConfig.mode === "blatant") {
                 this.bot.activateItem(true);
             }
-        })
+        });
         // await once(this.bot, "attackedTarget");
-
     }
 
     rotate() {
@@ -319,7 +258,7 @@ export class SwordPvp {
         const pos = this.target.position.offset(0, this.target.height, 0);
         if (this.rotateConfig.mode === "constant") {
             // this.bot.lookAt(pos, true);
-            if (this.wasInRange) this.bot.util.move.forceLookAt(pos, true);
+            if (this.wasInRange) this.bot.util.move.forceLookAt(pos, undefined, true);
             return;
         } else {
             if (this.timeToNextAttack !== -1) return;
@@ -344,12 +283,13 @@ export class SwordPvp {
     async attemptAttack() {
         if (!this.target) return;
         if (!this.wasInRange) {
-            this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
+            this.timeToNextAttack = 1//this.meleeAttackRate.getTicks(this.bot.heldItem!);
             return;
         }
-        // let health = this.getHealth(this.target.metadata);
-        this.bot.attack(this.target);
-        // this.logHealth(health);
+        let health = this.bot.util.entity.getHealth(this.target);
+        console.log(health)
+        attack(this.bot, this.target);
+        this.logHealth(health);
 
         this.bot.emit("attackedTarget", this.target);
 

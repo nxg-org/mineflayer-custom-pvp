@@ -22,8 +22,8 @@ export class ProjectileTracker {
 
     getIncomingArrows(): InfoBoundToEntity[] {
         const hittingArrows = [];
-        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
-        for (const entity of Object.values(this.bot.entities).filter((e) => e.name?.includes("arrow") && !e.onGround)) {
+        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.6 };
+        for (const entity of Object.values(this.bot.entities).filter((e) => e.name?.includes("arrow"))) {
             // assuming stopped.
             const init = ShotFactory.fromEntity(entity, this.intercepter);
             const info = init.hitsEntity(aabbComponents);
@@ -34,12 +34,16 @@ export class ProjectileTracker {
 
     getIncomingProjectiles(): InfoBoundToEntity[] {
         const hittingArrows = [];
-        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
-        for (const entity of Object.values(this.bot.entities).filter((e) => knownProjectiles.includes(e.name!) && !e.onGround)) {
+        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.8, width: 0.6 };
+        for (const entity of Object.values(this.bot.entities).filter((e) => knownProjectiles.includes(e.name!))) {
             // assuming stopped.
             const init = ShotFactory.fromEntity(entity, this.intercepter);
-            const info = init.hitsEntity(aabbComponents);
-            if (!!info) hittingArrows.push({ entity, info: info.shotInfo });
+            const info = init.hitsEntity(aabbComponents, {yawChecked: true, blockCheck: true});
+            for (const pos of init.points) {
+                const { x, y, z } = pos;
+                this.bot.chat(`/particle flame ${x} ${y} ${z} 0 0 0 0 1`);
+            }
+            if (!!info && info.shotInfo.nearestDistance === 0) hittingArrows.push({ entity, info: info.shotInfo });
         }
         return hittingArrows;
     }
@@ -49,7 +53,7 @@ export class ProjectileTracker {
         if (doesDamage) {
             return (
                 projs
-                    .filter((p) => p.entity.name! in ["arrow", "firework_rocket", "trident"])
+                    .filter((p) => ["arrow", "firework_rocket", "trident"].includes(p.entity.name!))
                     .sort((a, b) => a.entity.position.distanceTo(this.bot.entity.position) - b.entity.position.distanceTo(this.bot.entity.position))[0] ?? null
             );
         } else {
@@ -71,7 +75,7 @@ export class ProjectileTracker {
 
     getMobsAimingAtBot(): InfoBoundToEntity[] {
         const hittingArrows = [];
-        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
+        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.6 };
         for (const entity of Object.values(this.bot.entities).filter(
             (e) => e.name === ("skeleton" || e.name === "piglin") && e.heldItem?.name.includes("bow")
         )) {
@@ -85,7 +89,7 @@ export class ProjectileTracker {
     //TODO: Make aim dynamic by reading heldItem metadata.
     getPlayersAimingAtBot(): InfoBoundToEntity[] {
         const hittingArrows = [];
-        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.3 };
+        const aabbComponents = { position: this.bot.entity.position, height: this.bot.entity.height + 0.18, width: 0.6 };
         for (const entity of Object.values(this.bot.entities).filter((e) => e.type === "player" && e !== this.bot.entity)) {
             if (knownWeapons.includes(entity.heldItem?.name)) {
                 const init = ShotFactory.fromPlayer(entity, this.intercepter);

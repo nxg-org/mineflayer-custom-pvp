@@ -18,16 +18,21 @@ export class BowPVP {
     public tracker: EntityTracker;
 
     public target: Entity | null = null;
+    public shotInfo: CheckedShot | null = null;
     private shotInit: number = performance.now();
     private shotCharging: boolean = false;
     private crossbowLoading: boolean = false;
     private planner: ShotPlanner;
-    private shotInfo: CheckedShot | null = null;
+
     private waitTime: number = 1200;
 
     constructor(private bot: Bot) {
         this.tracker = new EntityTracker(bot);
         this.planner = new ShotPlanner(bot);
+
+        this.bot.on("entityGone", (e) => {
+            if (e === this.target) this.stop();
+        });
         // this.intercepter = new InterceptEquations(bot);
     }
 

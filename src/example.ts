@@ -12,21 +12,23 @@ const bot = createBot({
     username: "pvp-testing",
     host: process.argv[2] ?? "localhost",
     port: Number(process.argv[3]) ?? 25565,
-    version: "1.17.1"
+    version: "1.17.1",
 });
 
 bot.loadPlugin(customPVP);
 
 bot.once("spawn", () => {
-    bot.swordpvp.critConfig.mode = "hop";
+    bot.swordpvp.critConfig.mode = "packet";
     bot.bowpvp.useOffhand = false;
 });
 
 const checkedEntities: { [id: number]: Entity } = {};
-function equipShield() {
+async function equipShield() {
+    if (bot.entity.equipment[1]?.name === "shield") return;
+    console.log(bot.entity.equipment)
     const shield = bot.util.inv.getAllItemsExceptCurrent("off-hand").find((e) => e.name === "shield");
     if (shield) {
-        bot.util.inv.customEquip(shield, "off-hand");
+        await bot.util.inv.customEquip(shield, "off-hand")
     }
 }
 
@@ -44,11 +46,17 @@ bot.on("physicsTick", () => {
 bot.on("entityMoved", async (entity) => {
     if (!defend) return;
     if (!Object.keys(projectileGravity).includes(entity.name!)) return;
-    const pos = bot.tracker.getHighestPriorityProjectile()?.entity?.position;
+    const entityFound = bot.tracker.getHighestPriorityProjectile()?.entity;
+    const pos = entityFound?.position;
+
+    // console.log(Object.values(bot.entities))
+
     if (pos) {
+    
         bot.lookAt(pos, true);
-        equipShield();
+        // equipShield();
         if (!bot.util.entity.isOffHandActive()) bot.activateItem(true);
+        console.log("should shield rn")
     } else {
         bot.deactivateItem();
     }
@@ -82,7 +90,7 @@ bot.on("chat", async (username, message) => {
             target = bot.nearestEntity((e) => (e.username ?? e.name) === split[1]);
             if (!target) return console.log("no entity");
             bot.swordpvp.attack(target);
-            bot.util.move.followEntityWithRespectRange(target, 2)
+            bot.util.move.followEntityWithRespectRange(target, 2);
             break;
         case "rangestop":
             bot.bowpvp.stop();
@@ -95,15 +103,16 @@ bot.on("chat", async (username, message) => {
             break;
         case "defend":
             defend = true;
+            equipShield();
             break;
         case "defendstop":
             defend = false;
             break;
         case "packetmode":
-            bot.swordpvp.critConfig.mode = split[1] as any
+            bot.swordpvp.critConfig.mode = split[1] as any;
             break;
         case "shieldmode":
-            bot.swordpvp.shieldConfig.mode = split[1] as any
+            bot.swordpvp.shieldConfig.mode = split[1] as any;
             break;
     }
 });
