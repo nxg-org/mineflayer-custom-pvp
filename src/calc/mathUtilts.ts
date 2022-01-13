@@ -153,3 +153,12 @@ export function notchianVel(vec: Vec3, Vo?: number, Vox?: number): {Vo: number, 
 export function applyVec3Gravity(currentVel: Vec3, gravity: Vec3) {
     return currentVel.plus(gravity);
 }
+
+export function movingTowards(origin: Vec3, destination: Vec3, velocity: Vec3) {
+    return origin.distanceTo(destination) < origin.plus(velocity).distanceTo(destination)
+}
+
+
+export function movingAt(origin: Vec3, destination: Vec3, velocity: Vec3, maxOffset: number) {
+    return Math.abs(dirToYawAndPitch(velocity.normalize()).yaw - getTargetYaw(origin, destination)) < maxOffset
+}

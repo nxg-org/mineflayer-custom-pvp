@@ -5,7 +5,7 @@ import md from "minecraft-data";
 import { performance } from "perf_hooks";
 import { promisify } from "util";
 import { CheckedShot, ShotPlanner } from "./shotPlanner";
-import { EntityTracker } from "./entityTracker";
+import { EntityTracker } from "../tracker/entityTracker";
 
 import { Vec3 } from "vec3";
 const sleep = promisify(setTimeout);
@@ -15,8 +15,6 @@ export class BowPVP {
     public enabled: boolean = false;
     public weapon: string = "bow";
     public useOffhand: boolean = false;
-    public tracker: EntityTracker;
-
     public target: Entity | null = null;
     public shotInfo: CheckedShot | null = null;
     private shotInit: number = performance.now();
@@ -27,7 +25,6 @@ export class BowPVP {
     private waitTime: number = 1200;
 
     constructor(private bot: Bot) {
-        this.tracker = new EntityTracker(bot);
         this.planner = new ShotPlanner(bot);
 
         this.bot.on("entityGone", (e) => {
@@ -47,7 +44,7 @@ export class BowPVP {
      * @returns
      */
     public shotToEntity(entity: Entity, velocity?: Vec3) {
-        if (!velocity) velocity = this.tracker.getEntitySpeed(entity);
+        if (!velocity) velocity = this.bot.tracker.getEntitySpeed(entity);
         return this.planner.shotToEntity(entity, velocity);
     }
 
@@ -145,7 +142,7 @@ export class BowPVP {
     public stop() {
         this.bot.removeListener("physicsTick", this.getShotInfo);
         this.bot.removeListener("physicsTick", this.chargeHandling);
-        if (this.target) this.tracker.stopTrackingEntity(this.target);
+        if (this.target) this.bot.tracker.stopTrackingEntity(this.target);
         this.target = null;
         this.shotCharging = false;
         this.enabled = false;
@@ -183,7 +180,7 @@ export class BowPVP {
         }
         if (weapon) this.weapon = weapon;
         this.planner.weapon = this.weapon;
-        this.tracker.trackEntity(target);
+        this.bot.tracker.trackEntity(target);
         this.bot.on("physicsTick", this.getShotInfo);
         this.bot.on("physicsTick", this.chargeHandling);
     }
@@ -215,7 +212,7 @@ export class BowPVP {
 
     private getShotInfo = async () => {
         if (!this.target) return
-        this.shotInfo = this.shotToEntity(this.target, this.tracker.getEntitySpeed(this.target));
+        this.shotInfo = this.shotToEntity(this.target, this.bot.tracker.getEntitySpeed(this.target));
         // console.log(this.shotInfo)
     };
 

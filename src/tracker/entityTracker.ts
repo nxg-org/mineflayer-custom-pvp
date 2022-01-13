@@ -52,7 +52,10 @@ export class EntityTracker {
             if (this.trackingData[entityId].info.tickInfo.length > 0) {
 
                 const shiftPos = currentPos.clone().subtract(this.trackingData[entityId].info.tickInfo[this.trackingData[entityId].info.tickInfo.length- 1].position)
-                if (!shiftPos.equals(emptyVec) && !this.trackingData[entityId].info.avgSpeed.equals(emptyVec)) {
+                if (shiftPos.equals(emptyVec)) {
+                    this.trackingData[entityId].info.tickInfo = []; //clear all entries.
+                }
+                else if (!shiftPos.equals(emptyVec) && !this.trackingData[entityId].info.avgSpeed.equals(emptyVec)) {
                     const oldYaw = dirToYawAndPitch(this.trackingData[entityId].info.avgSpeed).yaw
                     const newYaw = dirToYawAndPitch(shiftPos).yaw
                     const dif = Math.abs(oldYaw - newYaw)
@@ -74,7 +77,7 @@ export class EntityTracker {
                 const prevPos = this.trackingData[entityId].info.tickInfo[i - 1].position;
                 speed.x += pos.x - prevPos.x;
                 const yShift = pos.y - prevPos.y;
-                if (yShift > 0.42 || yShift < -0.55) //accounts for jumping and falling
+                if (yShift > 0.5 || yShift < -0.55) //accounts for jumping and falling
                 speed.y += pos.y - prevPos.y;
                 speed.z += pos.z - prevPos.z;
             }
@@ -83,41 +86,6 @@ export class EntityTracker {
             speed.x = speed.x / length;
             speed.y = speed.y / length;
             speed.z = speed.z / length;
-
-            if (speed !== this.trackingData[entityId].info.avgSpeed) this.trackingData[entityId].info.avgSpeed = speed;
-        }
-    }
-
-    private hawkeyeTracking() {
-        for (const entityId in this.trackingData) {
-            if (!this.trackingData[entityId].tracking) continue;
-            const entity = this.bot.nearestEntity((e) => e.id.toString() === entityId); //bot.entities[entityId]
-            if (!entity) continue;
-
-            if (this.trackingData[entityId].info.tickInfo.length > 10) {
-                this.trackingData[entityId].info.tickInfo.shift();
-            }
-
-            // console.log( this.trackingData[entityId].info.tickInfo)
-
-            this.trackingData[entityId].info.tickInfo.push({ position: entity.position.clone(), velocity: entity.velocity.clone() });
-            let speed = new Vec3(0, 0, 0);
-
-            for (let i = 1; i < this.trackingData[entityId].info.tickInfo.length; i++) {
-                const pos = this.trackingData[entityId].info.tickInfo[i].position;
-                const prevPos = this.trackingData[entityId].info.tickInfo[i - 1].position;
-                speed.x += pos.x - prevPos.x;
-                const yShift = pos.y - prevPos.y;
-                // if (yShift > 0.4 || yShift < -0.5) //accounts for jumping and falling
-                speed.y += pos.y - prevPos.y;
-                speed.z += pos.z - prevPos.z;
-            }
-
-            speed.x = speed.x / this.trackingData[entityId].info.tickInfo.length;
-            speed.y = speed.y / this.trackingData[entityId].info.tickInfo.length;
-            speed.z = speed.z / this.trackingData[entityId].info.tickInfo.length;
-
-        
 
             if (speed !== this.trackingData[entityId].info.avgSpeed) this.trackingData[entityId].info.avgSpeed = speed;
         }
