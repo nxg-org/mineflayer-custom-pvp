@@ -6,8 +6,6 @@ import { SwordPvp } from "./sword/swordpvp";
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
 
-import jumper from "../../jumpPather"
-
 import { BowPVP } from "./bow/bowpvp";
 import { SwordPvpTwo } from "./sword/swordpvpTwo";
 declare module "mineflayer" {
