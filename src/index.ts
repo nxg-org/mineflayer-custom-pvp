@@ -1,10 +1,12 @@
 import { Shot } from "@nxg-org/mineflayer-trajectories";
 import utilPlugin from "@nxg-org/mineflayer-util-plugin";
-import { EntityTracker } from "./tracker/entityTracker";
-import { ProjectileTracker } from "./tracker/projectileTracker";
+import trackerPlugin from "@nxg-org/mineflayer-tracker";
+import jumpPathing from "@nxg-org/mineflayer-jump-pathing";
 import { SwordPvp } from "./sword/swordpvp";
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
+
+import jumper from "../../jumpPather"
 
 import { BowPVP } from "./bow/bowpvp";
 import { SwordPvpTwo } from "./sword/swordpvpTwo";
@@ -12,9 +14,6 @@ declare module "mineflayer" {
     interface Bot {
         swordpvp: SwordPvpTwo;
         bowpvp: BowPVP;
-        tracker: EntityTracker
-        projectiles: ProjectileTracker;
-
     }
     interface BotEvents {
         attackedTarget: (target: Entity) => void;
@@ -26,11 +25,10 @@ declare module "mineflayer" {
 
 export default function plugin(bot: Bot) {
     if (!bot.util) bot.loadPlugin(utilPlugin);
+    if (!bot.tracker || !bot.projectiles) bot.loadPlugin(trackerPlugin)
+    if (!bot.jumpPather) bot.loadPlugin(jumpPathing)
     bot.swordpvp = new SwordPvpTwo(bot);
     bot.bowpvp = new BowPVP(bot);
-    bot.tracker = new EntityTracker(bot);
-    bot.projectiles = new ProjectileTracker(bot);
 }
 
 export { Shot };
-export { EntityTracker };

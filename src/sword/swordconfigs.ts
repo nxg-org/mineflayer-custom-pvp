@@ -1,6 +1,5 @@
 export interface FullConfig {
-    viewDistance: number;
-    attackRange: number;
+    genericConfig: GenericConfig
     tapConfig: TapConfig
     kbCancelConfig: KBConfig
     strafeConfig: StrafeConfig
@@ -12,8 +11,13 @@ export interface FullConfig {
 
 
 export const defaultConfig: FullConfig = {
-    viewDistance: 128,
-    attackRange: 3,
+    genericConfig: {
+        viewDistance: 128,
+        attackRange: 2.8,
+        missChancePerTick: 0.2,
+        enemyReach: 3,
+        updateForShielding: true
+    },
     tapConfig: {
         enabled: true,
         mode: "stap",
@@ -22,8 +26,8 @@ export const defaultConfig: FullConfig = {
     strafeConfig: {
         enabled: true,
         mode: {
-            name: "circle",
-            maxOffset: Math.PI / 3
+            name: "intelligent",
+            maxOffset: Math.PI / 2
         }
     },
     critConfig: {
@@ -32,7 +36,15 @@ export const defaultConfig: FullConfig = {
     },
     kbCancelConfig: {
         enabled: true,
-        mode: "shift"
+        // mode: {
+        //     name: "velocity",
+        //     // hRatio: 2,
+        //     // yRatio: 2,
+        // }
+        mode: {
+            name: "jump",
+            delay: 5
+        }
     },
     rotateConfig: {
         enabled: true,
@@ -49,13 +61,21 @@ export const defaultConfig: FullConfig = {
 
 }
 
+export interface GenericConfig {
+    viewDistance: number;
+    attackRange: number;
+    missChancePerTick: number;
+    enemyReach: number;
+    updateForShielding: boolean;
+}
+
 
 export interface SwingBehaviorConfig {
     mode: "killaura" | "fullswing";
 }
 
 export interface StrafeModeConfig {
-    name: "circle"
+    name: "circle" | "random" | "intelligent"
     maxOffset?: number
 }
 
@@ -72,9 +92,15 @@ export interface TapConfig {
 
 export interface KBConfig {
     enabled: boolean,
-    mode: "packet" | "shift"
+    mode: KBModeConfig
 }
 
+export interface KBModeConfig {
+    name: "jump" | "shift" | "jumpshift" | "velocity",
+    delay?: number
+    hRatio?: number
+    yRatio?: number
+}
 export interface CriticalsConfig {
     enabled: boolean;
     mode: "packet" | "shorthop" | "hop";

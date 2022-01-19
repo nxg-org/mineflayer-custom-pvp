@@ -2,18 +2,20 @@ import { Bot, ControlState } from "mineflayer";
 import { Entity } from "prismarine-entity";
 import { Item } from "prismarine-item";
 import { promisify } from "util";
-import { getTargetYaw, movingAt, toRadians } from "../calc/mathUtilts";
+import { getTargetYaw, lookingAt, lookingAtXZ, movingAt, toRadians } from "../calc/mathUtilts";
 import { attack } from "../util";
 import { attackSpeeds, MaxDamageOffset } from "./sworddata";
 import { CriticalsConfig, defaultConfig, FullConfig, RotateConfig, ShieldConfig, SwingBehaviorConfig } from "./swordconfigs";
 import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
+import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
 import { EventEmitter } from "stream";
 const { getEntityAABB } = AABBUtils;
+
 const sleep = promisify(setTimeout);
 const PI = Math.PI;
 const TwoPI = Math.PI * 2;
 const PIOver3 = Math.PI / 3;
-const Degrees_135 = toRadians(135) 
+const Degrees_135 = toRadians(135);
 
 /**
  * The main pvp manager plugin class.
@@ -21,30 +23,38 @@ const Degrees_135 = toRadians(135)
 export class SwordPvpTwo extends EventEmitter {
     public timeToNextAttack: number = 0;
     public ticksSinceTargetAttack: number = 0;
+    public ticksSinceLastHurt: number = 0;
+    public ticksSinceLastTargetHit: number = 0;
     public ticksSinceLastSwitch: number = 0;
     public wasInRange: boolean = false;
     public meleeAttackRate: MaxDamageOffset;
     public target?: Entity;
     public lastTarget?: Entity;
     public weaponOfChoice: string = "sword";
-    public updateForTargetShielding: boolean = true;
+    private firstHit: boolean = true;
+    private tickOverride: boolean = false;
+    private targetShielding: boolean = false;
 
-    public currentStrafeDir?: ControlState;
+    private currentStrafeDir?: ControlState;
+    private strafeCounter: number = 0;
+    private targetGoal?: any;
 
     constructor(public bot: Bot, public options: FullConfig = defaultConfig) {
         super();
         this.meleeAttackRate = new MaxDamageOffset(this.bot);
         this.bot.on("physicsTick", this.update);
+        this.bot.on("physicsTick", this.checkForShield);
         this.bot.on("entityGone", (e) => {
-            if (e === this.target) this.stop();
-        });
-
-        this.bot.on("entitySwingArm", (entity: Entity) => {
-            if (entity === this.target) {
-                this.ticksSinceTargetAttack = 0;
+            if (e === this.target) {
+                this.bot.chat(
+                    `Fought ${this.target.username ?? this.target.name}. They died, I finished with ${this.bot.health.toFixed(2)} HP.`
+                );
+                this.stop();
             }
         });
-        this.bot._client.on("entity_metadata", this.checkForTargetShield);
+
+        this.bot.on("entitySwingArm", this.swingUpdate);
+        this.bot.on("entityHurt", this.hurtUpdate);
     }
 
     changeWeaponState(weapon: string): Item | null {
@@ -63,21 +73,13 @@ export class SwordPvpTwo extends EventEmitter {
             return heldItem;
         } else {
             const item = this.bot.util.inv.getAllItems().find((item) => item?.name.includes(weapon!));
-            if (item) {
-                return item;
-            }
-            return null;
+            return item ? item : null;
         }
     }
 
     async equipWeapon(weapon: Item): Promise<boolean> {
         const heldItem = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("hand")];
-        if (heldItem?.name === weapon.name) {
-            return false;
-        } else {
-            return await this.bot.util.inv.customEquip(weapon, "hand");
-            // await this.bot.util.builtInsPriority({group: "inventory", priority: 1, returnIfRunning: false}, this.bot.equip, weapon, "hand");
-        }
+        return heldItem?.name === weapon.name ? await this.bot.util.inv.customEquip(weapon, "hand") : false;
     }
 
     getWeaponOfEntity(entity?: Entity): Item {
@@ -90,30 +92,108 @@ export class SwordPvpTwo extends EventEmitter {
         return shieldSlot?.name === "shield" && this.bot.util.entity.isOffHandActive(entity);
     }
 
-    checkForTargetShield = async (packet: any) => {
-        if (!this.updateForTargetShielding) return;
-        if (!packet.entityId || !packet.metadata || packet.metadata.length === 0) return;
-        if (!packet.metadata[0].key || packet.metadata[0].key !== 8) return;
-        const entity = this.bot.entities[packet.entityId];
-        if (!entity || entity !== (!!this.target ? this.target : this.lastTarget)) return;
-        const boolState = packet.metadata[0].value === 3 && entity.equipment[1]?.name === "shield"; //is offhand active
-        const state = boolState ? "_axe" : "sword";
-        if (!!this.target && this.ticksSinceTargetAttack >= 3 && this.ticksSinceLastSwitch >= 3) {
-            const itemToChangeTo = await this.checkForWeapon(state);
+    checkForShield = async () => {
+        if (!this.target) return;
+        if ((this.target.metadata[8] as any) === 3 && this.target.equipment[1]?.name === "shield") {
+            if (!this.targetShielding) this.ticksSinceLastSwitch = 0;
+            this.targetShielding = true;
+            if (this.ticksSinceTargetAttack >= 3 && this.ticksSinceLastSwitch >= 3) {
+                // if (this.weaponOfChoice === "_axe") return; //assume already attacking
+                const itemToChangeTo = await this.checkForWeapon("_axe");
+                if (itemToChangeTo) {
+                    const switched = await this.equipWeapon(itemToChangeTo);
+                    if (switched) {
+                        this.weaponOfChoice = "_axe";
+                        await this.bot.waitForTicks(3);
+                        this.attemptAttack();
+                    }
+                }
+            }
+        } else {
+            if (this.targetShielding) this.ticksSinceLastSwitch = 0;
+            this.targetShielding = false;
+            if (this.weaponOfChoice === "sword") return; //assume already attacking
+            const itemToChangeTo = await this.checkForWeapon("sword");
             if (itemToChangeTo) {
-                // await sleep(this.timeToNextAttack + 100)
-                // await this.attemptAttack();
                 const switched = await this.equipWeapon(itemToChangeTo);
-                this.weaponOfChoice = state;
-                if (switched) this.timeToNextAttack = this.meleeAttackRate.getTicks(this.getWeaponOfEntity(this.bot.entity));
+                if (switched) {
+                    this.weaponOfChoice = "sword";
+                    this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
+                }
             }
         }
+    };
 
-        this.emit("targetBlockingUpdate", entity, boolState);
+    swingUpdate = async (entity: Entity) => {
+        if (entity === this.target) {
+            this.ticksSinceTargetAttack = 0;
+            if (this.ticksSinceLastHurt < 2) this.ticksSinceLastTargetHit = 0;
+        }
+    };
+
+    hurtUpdate = async (entity: Entity) => {
+        if (!this.target) return;
+        if (entity === this.bot.entity) {
+            this.ticksSinceLastHurt = 0;
+            // console.log(this.ticksSinceTargetAttack)
+            if (this.options.kbCancelConfig.enabled) {
+                switch (this.options.kbCancelConfig.mode.name) {
+                    case "velocity":
+                        await new Promise((resolve, reject) => {
+                            const listener = (packet: any) => {
+                                const entity = this.bot.entities[packet.entityId];
+                                if (entity === this.bot.entity) {
+                                    if (this.options.kbCancelConfig.mode.hRatio) {
+                                        entity.velocity.x *= this.options.kbCancelConfig.mode.hRatio;
+                                        entity.velocity.z *= this.options.kbCancelConfig.mode.hRatio;
+                                    }
+                                    if (this.options.kbCancelConfig.mode.yRatio)
+                                        entity.velocity.y *= this.options.kbCancelConfig.mode.yRatio;
+
+                                    resolve(undefined);
+                                }
+                            };
+                            this.bot._client.removeListener("entity_velocity", listener);
+                            setTimeout(() => {
+                                this.bot._client.removeListener("entity_velocity", listener);
+                                resolve(undefined);
+                            }, 500);
+                            this.bot._client.on("entity_velocity", listener);
+                        });
+                        return;
+
+                    case "jump":
+                    case "jumpshift":
+                        if (lookingAt(entity, this.bot.entity, this.options.genericConfig.enemyReach)) {
+                            this.bot.setControlState("right", false);
+                            this.bot.setControlState("left", false);
+                            this.bot.setControlState("back", false);
+                            this.bot.setControlState("sneak", false);
+                            this.bot.setControlState("forward", true);
+                            this.bot.setControlState("sprint", true);
+                            this.bot.setControlState("jump", true);
+                            this.bot.setControlState("jump", false);
+                        }
+
+                        if (this.options.kbCancelConfig.mode.name === "jump") break;
+                    case "shift":
+                        if (lookingAt(entity, this.target, this.options.genericConfig.enemyReach)) {
+                            this.bot.setControlState("sneak", true);
+                            await this.bot.waitForTicks(this.options.kbCancelConfig.mode.delay ?? 5);
+                            this.bot.setControlState("sneak", false);
+                            this.bot.setControlState("sprint", true);
+                        }
+
+                        break;
+                }
+            }
+
+            if (this.options.swingConfig.mode === "fullswing") this.reactionaryCrit();
+        }
     };
 
     async attack(target: Entity) {
-        if (target?.id === this.target?.id) return;
+        if (target === this.target) return;
         this.stop();
         this.target = target;
         if (!this.target) return;
@@ -121,6 +201,7 @@ export class SwordPvpTwo extends EventEmitter {
         const itemToChangeTo = await this.checkForWeapon();
         if (itemToChangeTo) await this.equipWeapon(itemToChangeTo);
         this.bot.tracker.trackEntity(target);
+        this.bot.tracker.trackEntity(this.bot.entity);
         this.emit("startedAttacking", this.target);
     }
 
@@ -129,6 +210,8 @@ export class SwordPvpTwo extends EventEmitter {
         this.lastTarget = this.target;
         this.bot.tracker.stopTrackingEntity(this.target);
         this.target = undefined;
+        this.bot.jumpPather.stop();
+        this.bot.clearControlStates();
         this.emit("stoppedAttacking");
     }
 
@@ -137,6 +220,8 @@ export class SwordPvpTwo extends EventEmitter {
         if (!this.target) return;
         this.timeToNextAttack--;
         this.ticksSinceTargetAttack++;
+        this.ticksSinceLastHurt++;
+        this.ticksSinceLastTargetHit++;
         this.ticksSinceLastSwitch++;
         this.checkRange();
         this.rotate();
@@ -145,26 +230,32 @@ export class SwordPvpTwo extends EventEmitter {
         this.causeCritical();
         this.toggleShield();
 
-        if (this.timeToNextAttack === -1) {
+        if (this.timeToNextAttack === -1 && !this.tickOverride) {
             // const health = this.bot.util.entity.getHealth(this.target);
 
             this.attemptAttack();
             this.sprintTap();
+
             // this.logHealth(health);
         }
     };
 
-    trueDistance(): number {
+    botReach(): number {
         if (!this.target) return 10000;
         return getEntityAABB(this.target).distanceTo(this.bot.entity.position.offset(0, this.bot.entity.height, 0));
+    }
+
+    targetReach(): number {
+        if (!this.target) return 10000;
+        return getEntityAABB(this.bot.entity).distanceTo(this.target.position.offset(0, this.target.height, 0));
     }
 
     checkRange() {
         if (!this.target) return;
         // if (this.timeToNextAttack < 0) return;
         const dist = this.target.position.distanceTo(this.bot.entity.position);
-        if (dist > this.options.viewDistance) return this.stop();
-        const inRange = this.trueDistance() <= this.options.attackRange;
+        if (dist > this.options.genericConfig.viewDistance) return this.stop();
+        const inRange = this.botReach() <= this.options.genericConfig.attackRange;
         if (!this.wasInRange && inRange && this.options.swingConfig.mode === "killaura") this.timeToNextAttack = 0;
         this.wasInRange = inRange;
     }
@@ -203,11 +294,12 @@ export class SwordPvpTwo extends EventEmitter {
                 this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 4.0e-6, 0), onGround: false });
                 this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 1.1e-6, 0), onGround: false });
                 this.bot._client.write("position", { ...this.bot.entity.position, onGround: false });
+                this.bot.entity.onGround = false;
                 return true;
             case "shorthop":
                 if (this.timeToNextAttack !== 1) return false;
                 if (!this.bot.entity.onGround) return false;
-                if (this.trueDistance() > this.options.attackRange + 1) return false;
+                if (this.botReach() > this.options.genericConfig.attackRange) return false;
                 this.bot.entity.position = this.bot.entity.position.offset(0, 0.25, 0);
 
                 this.bot.entity.onGround = false;
@@ -216,12 +308,18 @@ export class SwordPvpTwo extends EventEmitter {
                 this.bot.entity.position = this.bot.entity.position.set(dx, Math.floor(dy), dz);
                 return true;
             case "hop":
-                if (this.timeToNextAttack > 8) return false;
-                if (this.timeToNextAttack === 8) {
-                    if (!this.bot.entity.onGround) return false;
-                    if (this.trueDistance() > this.options.attackRange + 1) return false;
+                if (this.timeToNextAttack > 7) return false;
+                if (this.timeToNextAttack === 7 || this.firstHit) {
+                    if (!this.bot.entity.onGround) {
+                        this.reactionaryCrit();
+                        return false;
+                    }
+                    if (this.botReach() > this.options.genericConfig.attackRange - 1) return false;
                     this.bot.setControlState("jump", true);
                     this.bot.setControlState("jump", false);
+                    this.reactionaryCrit();
+
+                    // if (this.options.swingConfig.mode === "fullswing") this.timeToNextAttack = 7;
                     if (!this.wasInRange) {
                         this.bot.setControlState("forward", true);
                     }
@@ -236,43 +334,93 @@ export class SwordPvpTwo extends EventEmitter {
         }
     }
 
+    private forwardOrBack(conditional: boolean) {
+        return conditional ? "forward" : "back";
+    }
+
     async doMove() {
         if (!this.target) {
-            this.bot.setControlState("forward", false);
-            this.bot.setControlState("back", false);
-            this.bot.setControlState("left", false);
-            this.bot.setControlState("right", false);
+            this.bot.clearControlStates();
             return;
         }
-
-        const truth = this.trueDistance() < 3.0 ? "back" : "forward";
-        const falsy = this.trueDistance() > 2.9 ? "back" : "forward";
-        this.bot.setControlState(truth, true);
-        this.bot.setControlState(falsy, false);
-        this.bot.setControlState("sprint", true);
+        const range = this.botReach();
+        if (range > 4 && !this.targetGoal) {
+            this.targetGoal = GoalFactory.predictEntity(this.bot, this.target, 1, 10);
+            this.bot.jumpPather.goto(this.targetGoal);
+        } else if (range <= 4) {
+            if (this.targetGoal) this.bot.jumpPather.stop();
+            this.targetGoal = undefined;
+            const conditional = this.botReach() > 0; //this.options.genericConfig.attackRange / 20;
+            if (!this.bot.getControlState("back")) {
+                this.bot.setControlState("forward", conditional);
+                this.bot.setControlState("sprint", conditional);
+            }
+        }
     }
 
     async doStrafe() {
         if (!this.target) {
             if (this.currentStrafeDir) {
-                this.bot.setControlState(this.currentStrafeDir, false)
+                this.bot.setControlState(this.currentStrafeDir, false);
                 this.currentStrafeDir = undefined;
             }
+
             return false;
         }
         if (!this.options.strafeConfig.enabled) return false;
         const diff = getTargetYaw(this.target.position, this.bot.entity.position) - this.target.yaw;
-        const staringDirection = diff < 0 ? "right" : "left";
-        const shouldMove = Math.abs(diff) < PIOver3;
-        if (staringDirection !== this.currentStrafeDir) {
+        const shouldMove = Math.abs(diff) < (this.options.strafeConfig.mode.maxOffset ?? PIOver3);
+        if (!shouldMove) {
             if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
-        }
-        if (shouldMove) {
-            this.currentStrafeDir = staringDirection;
-            this.bot.setControlState(staringDirection, true);
-        } else {
-            this.bot.setControlState(staringDirection, false);
             this.currentStrafeDir = undefined;
+            return;
+        }
+        switch (this.options.strafeConfig.mode.name) {
+            case "circle":
+                const circleDir = diff < 0 ? "right" : "left";
+                if (circleDir !== this.currentStrafeDir) {
+                    if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
+                }
+
+                this.currentStrafeDir = circleDir;
+                this.bot.setControlState(circleDir, true);
+
+                break;
+            case "random":
+                if (this.strafeCounter < 0) {
+                    this.strafeCounter = Math.floor(Math.random() * 20) + 5;
+                    const rand = Math.random();
+                    const randomDir = rand < 0.5 ? "left" : "right";
+                    const oppositeDir = rand >= 0.5 ? "left" : "right";
+
+                    if (this.botReach() <= this.options.genericConfig.attackRange + 3) {
+                        this.bot.setControlState(randomDir, true);
+                        this.bot.setControlState(oppositeDir, false);
+                        this.currentStrafeDir = randomDir;
+                    }
+                }
+                this.strafeCounter--;
+                break;
+            case "intelligent":
+                if (this.ticksSinceLastTargetHit > 40) {
+                    this.bot.setControlState("left", false);
+                    this.bot.setControlState("right", false);
+                    this.currentStrafeDir = undefined;
+                } else if (this.strafeCounter < 0) {
+                    this.strafeCounter = Math.floor(Math.random() * 20) + 5;
+                    const intelliRand = Math.random();
+                    const smartDir = intelliRand < 0.5 ? "left" : "right";
+                    const oppositeSmartDir = intelliRand >= 0.5 ? "left" : "right";
+                    if (this.botReach() <= this.options.genericConfig.attackRange + 3) {
+                        this.bot.setControlState(smartDir, true);
+                        this.bot.setControlState(oppositeSmartDir, false);
+                        this.currentStrafeDir = smartDir;
+                    } else {
+                        if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
+                        this.currentStrafeDir = undefined;
+                    }
+                }
+                this.strafeCounter--;
         }
     }
 
@@ -281,46 +429,42 @@ export class SwordPvpTwo extends EventEmitter {
         if (!this.bot.entity.onGround) return false;
         if (!this.wasInRange) return false;
         if (!this.options.tapConfig.enabled) return false;
-        const forward = this.bot.getControlState("forward")
-        const sprint = this.bot.getControlState("sprint")
         switch (this.options.tapConfig.mode) {
             case "wtap":
-
                 this.bot.setControlState("forward", false);
                 this.bot.setControlState("sprint", false);
-                if (forward) this.bot.setControlState("forward", true);
-                if (sprint) this.bot.setControlState("sprint", true);
+                this.bot.setControlState("forward", true);
+                this.bot.setControlState("sprint", true);
                 break;
             case "stap":
-                const back = this.bot.getControlState("forward")
-                this.bot.setControlState("forward", false);
-                this.bot.setControlState("sprint", false);
-                this.bot.setControlState("back", true);
-
-                while (this.trueDistance() < this.options.attackRange + 1) {
-                    const test = movingAt(
+                do {
+                    this.bot.setControlState("forward", false);
+                    this.bot.setControlState("sprint", false);
+                    this.bot.setControlState("back", true);
+                    const looking = movingAt(
                         this.target.position,
                         this.bot.entity.position,
+                        // this.options.genericConfig.enemyReach
                         this.bot.tracker.getEntitySpeed(this.target),
                         PIOver3
                     );
-                    if (!test && this.wasInRange) break;
+                    if (!looking && this.wasInRange) break;
                     await this.bot.waitForTicks(1);
-                }
+                } while (this.botReach() < this.options.genericConfig.attackRange + 0.1);
+
                 this.bot.setControlState("back", false);
-                if (forward) this.bot.setControlState("forward", true);
-                if (sprint) this.bot.setControlState("sprint", true);
+                this.bot.setControlState("forward", true);
+                this.bot.setControlState("sprint", true);
                 break;
             default:
-                console.log("shit" + this.options.tapConfig.mode)
+                break;
         }
     }
 
     async toggleShield() {
         if (this.timeToNextAttack !== 0 || !this.target || !this.wasInRange) return false;
         const shield = this.hasShield();
-        const wasShieldActive = shield; //&& this.bot.util.entity.isOffHandActive()
-        // console.log(wasShieldActive, this.options.shieldConfig.enabled, this.options.shieldConfig.mode === "legit")
+        const wasShieldActive = shield;
         if (wasShieldActive && this.options.shieldConfig.enabled && this.options.shieldConfig.mode === "legit") {
             this.bot.deactivateItem();
         }
@@ -340,9 +484,7 @@ export class SwordPvpTwo extends EventEmitter {
         if (!this.options.rotateConfig.enabled || !this.target) return false;
         const pos = this.target.position.offset(0, this.target.height, 0);
         if (this.options.rotateConfig.mode === "constant") {
-            // this.bot.lookAt(pos, true);
-            //if (this.wasInRange)
-             this.bot.util.move.forceLookAt(pos, undefined, true);
+            this.bot.lookAt(pos);
             return;
         } else {
             if (this.timeToNextAttack !== -1) return;
@@ -364,17 +506,40 @@ export class SwordPvpTwo extends EventEmitter {
         }
     }
 
+    async reactionaryCrit() {
+        if (!this.target) return;
+        this.tickOverride = true;
+        let i = 0;
+        for (; i < 12; i++) {
+            if (this.bot.entity.velocity.y <= -0.3) break;
+            await this.bot.waitForTicks(1);
+        }
+        this.bot.setControlState("sprint", false);
+        await this.attemptAttack();
+        // for (let i = 0; i < 10; i++) {
+        //     if (this.bot.entity.onGround) break;
+        //     await this.bot.waitForTicks(1);
+        // }
+        this.tickOverride = false;
+    }
+
     async attemptAttack() {
         if (!this.target) return;
         if (!this.wasInRange) {
-            this.timeToNextAttack = 1; //this.meleeAttackRate.getTicks(this.bot.heldItem!);
+            this.timeToNextAttack = 0;
+            this.firstHit = true;
+            return;
+        }
+        if (Math.random() < this.options.genericConfig.missChancePerTick) {
+            this.timeToNextAttack = 0;
             return;
         }
 
+        // if (this.timeToNextAttack <-1) console.trace(this.timeToNextAttack);
         attack(this.bot, this.target);
+        this.firstHit = false;
 
         this.emit("attackedTarget", this.target);
-
         this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
     }
 
@@ -383,95 +548,5 @@ export class SwordPvpTwo extends EventEmitter {
         const slot = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("off-hand")];
         if (!slot) return false;
         return slot.name.includes("shield");
-    }
-}
-
-export class SwordPVPMovement {
-    private moving: boolean;
-    private currentStrafeDir?: ControlState;
-    private target?: Entity;
-    constructor(private bot: Bot) {
-        this.moving = false;
-    }
-
-    //manually called.
-    calcStrafe(target: Entity): { [movement: string]: boolean } {
-        const diff = getTargetYaw(target.position, this.bot.entity.position) - target.yaw;
-        const obj: { [movement: string]: boolean } = {};
-        const staringDirection = diff < 0 ? "right" : "left";
-        const shouldMove = Math.abs(diff) < PIOver3;
-        if (staringDirection !== this.currentStrafeDir) {
-            if (this.currentStrafeDir) obj[this.currentStrafeDir] = false;
-        }
-        if (shouldMove) {
-            obj[staringDirection] = true;
-            this.currentStrafeDir = staringDirection;
-        } else {
-            obj[staringDirection] = false;
-            this.currentStrafeDir = undefined;
-        }
-
-        return obj;
-    }
-
-    //manually called.
-    async sprintTap(mode: string) {
-        if (!this.bot.entity.onGround) return false;
-        switch (mode) {
-            case "wtap":
-                this.bot.setControlState("sprint", false);
-                this.bot.setControlState("sprint", true);
-                break;
-            case "stap":
-                this.bot.setControlState("forward", false);
-                this.bot.setControlState("sprint", false);
-                this.bot.setControlState("back", true);
-                this.bot.setControlState("back", false);
-                this.bot.setControlState("forward", true);
-                this.bot.setControlState("sprint", true);
-        }
-    }
-
-    //manually called.
-    public follow(target: Entity, mode: string) {
-        switch (mode) {
-            case "lineOfSight":
-        }
-    }
-
-    public stop() {}
-}
-
-export class ShieldControl extends EventEmitter {
-    public trackingEntities: { [entityId: number]: [Entity, boolean] } = {};
-    constructor(private bot: Bot) {
-        super();
-    }
-
-    trackEntity(entity: Entity) {
-        this.trackingEntities[entity.id] ??= [entity, this.checkIfShielding(entity)];
-    }
-
-    stopTrackingEntity(entity: Entity) {
-        delete this.trackingEntities[entity.id];
-    }
-
-    checkIfShielding(entity: Entity) {
-        return entity.equipment[1]?.name === "shield" && (entity.metadata[8] as any).value === 3;
-    }
-
-    shieldCheck = async (packet: any) => {
-        if (!packet.entityId || !packet.metadata || packet.metadata.length === 0) return;
-        if (!packet.metadata[0].key || packet.metadata[0].key !== 8) return;
-        const entity = this.bot.entities[packet.entityId];
-        if (Object.values(this.trackingEntities).find((info) => info[0] === entity)) return; //this should work.
-        if (entity.equipment[1]?.name !== "shield") return;
-        const boolState = this.checkIfShielding(entity);
-        this.trackingEntities[entity.id][1] = boolState;
-        this.emit("targetBlockingUpdate", entity, boolState);
-    };
-
-    isShieldEffective(entity: Entity) {
-        return Math.abs(getTargetYaw(entity.position, this.bot.entity.position) - entity.yaw) < Degrees_135
     }
 }

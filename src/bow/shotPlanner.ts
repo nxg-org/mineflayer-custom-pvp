@@ -2,7 +2,7 @@ import { Bot } from "mineflayer";
 import { AABBComponents, BasicShotInfo, Shot, ShotFactory, InterceptFunctions } from "@nxg-org/mineflayer-trajectories";
 import { Entity } from "prismarine-entity";
 import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir } from "../calc/mathUtilts";
-import { EntityTracker } from "../tracker/entityTracker";
+import { EntityTracker } from "@nxg-org/mineflayer-tracker";
 import { Vec3 } from "vec3";
 import { AABB } from "@nxg-org/mineflayer-util-plugin";
 import { getEntityAABB } from "../calc/aabbUtils";

@@ -1,5 +1,8 @@
-import { Bot } from "mineflayer";
+import { AABB, AABBUtils } from "@nxg-org/mineflayer-util-plugin";
+import type { Entity } from "prismarine-entity";
+import type { Bot } from "mineflayer";
 import { Vec3 } from "vec3";
+import { getEntityAABB } from "./aabbUtils";
 
 const PI = Math.PI;
 const PI_2 = Math.PI * 2;
@@ -117,7 +120,7 @@ export function vectorMagnitude(vec: Vec3): number {
     return Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
 }
 
-export function VoToVox(vec: Vec3, mag?: number): number {    
+export function VoToVox(vec: Vec3, mag?: number): number {
     return mag ? Math.sqrt(mag * mag - vec.y * vec.y) : Math.sqrt(Math.pow(vectorMagnitude(vec), 2) - vec.y * vec.y);
 }
 
@@ -125,28 +128,28 @@ export function VoToVox(vec: Vec3, mag?: number): number {
 export function yawPitchAndSpeedToDir(yaw: number, pitch: number, speed: number) {
     const thetaY = Math.PI + yaw;
     const thetaP = pitch;
-    const x = speed * Math.sin(thetaY)
-    const y = speed * Math.sin(thetaP)
-    const z = speed * Math.cos(thetaY)
-    const VxMag = Math.sqrt(x * x + z * z)
-    const VxRatio = Math.sqrt(VxMag * VxMag - y * y)
-    const allRatio = VxRatio / VxMag
+    const x = speed * Math.sin(thetaY);
+    const y = speed * Math.sin(thetaP);
+    const z = speed * Math.cos(thetaY);
+    const VxMag = Math.sqrt(x * x + z * z);
+    const VxRatio = Math.sqrt(VxMag * VxMag - y * y);
+    const allRatio = VxRatio / VxMag;
     return new Vec3(x * allRatio, y, z * allRatio);
 }
 
 // TODO: make it not throw NaN.
-export function notchianVel(vec: Vec3, Vo?: number, Vox?: number): {Vo: number, Vox: number, vel: Vec3} {
+export function notchianVel(vec: Vec3, Vo?: number, Vox?: number): { Vo: number; Vox: number; vel: Vec3 } {
     if (Vo && Vox) {
-        return {Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo))}
+        return { Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo)) };
     } else if (Vo) {
-        const Vox = VoToVox(vec, Vo)
-        return {Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo))}
+        const Vox = VoToVox(vec, Vo);
+        return { Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo)) };
     } else {
         // console.log(vec)
-        const Vo = vectorMagnitude(vec)
-        const Vox = VoToVox(vec)
+        const Vo = vectorMagnitude(vec);
+        const Vox = VoToVox(vec);
         // console.log(Math.pow(Vo, 2), vec.y * vec.y)
-        return {Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo))}
+        return { Vo, Vox, vel: new Vec3(vec.x * (Vox / Vo), vec.y, vec.z * (Vox / Vo)) };
     }
 }
 
@@ -155,10 +158,32 @@ export function applyVec3Gravity(currentVel: Vec3, gravity: Vec3) {
 }
 
 export function movingTowards(origin: Vec3, destination: Vec3, velocity: Vec3) {
-    return origin.distanceTo(destination) < origin.plus(velocity).distanceTo(destination)
+    return origin.distanceTo(destination) < origin.plus(velocity).distanceTo(destination);
 }
 
-
 export function movingAt(origin: Vec3, destination: Vec3, velocity: Vec3, maxOffset: number) {
-    return Math.abs(dirToYawAndPitch(velocity.normalize()).yaw - getTargetYaw(origin, destination)) < maxOffset
+    return Math.abs(dirToYawAndPitch(velocity.normalize()).yaw - getTargetYaw(origin, destination)) < maxOffset;
+}
+
+export function lookingAt(origin: Entity, target: Entity, maxDistance?: number): boolean {
+    const dir = yawPitchAndSpeedToDir(origin.yaw, origin.pitch, 1);
+    return lookingAtFromRay(origin.position.offset(0, origin.height, 0), AABBUtils.getEntityAABBRaw({position: target.position, height: target.height, width: target.width ?? 0.6}), dir, maxDistance)
+
+}
+
+export function lookingAtXZ(origin: Entity, target: Entity, maxOffset: number): boolean {
+    return Math.abs(origin.yaw - getTargetYaw(origin.position, target.position)) < maxOffset;
+}
+
+export function lookingAtFromRay(origin: Vec3, target: AABB, dir: Vec3, maxDistance?: number): boolean {
+    if (!maxDistance) {
+        return !!target.intersectsRay(origin, dir);
+    } else {
+        const res = target.intersectsRay(origin, dir);
+        return res ? origin.distanceTo(res) < maxDistance : false;
+    }
+}
+
+export function lookingAtFromSegment(origin: Vec3, target: AABB, endpoint: Vec3) {
+    return target.intersectsSegment(origin, endpoint);
 }
