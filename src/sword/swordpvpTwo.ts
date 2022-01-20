@@ -9,6 +9,7 @@ import { CriticalsConfig, defaultConfig, FullConfig, RotateConfig, ShieldConfig,
 import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
 import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
 import { EventEmitter } from "stream";
+import { Vec3 } from "vec3";
 const { getEntityAABB } = AABBUtils;
 
 const sleep = promisify(setTimeout);
@@ -79,7 +80,7 @@ export class SwordPvpTwo extends EventEmitter {
 
     async equipWeapon(weapon: Item): Promise<boolean> {
         const heldItem = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("hand")];
-        return heldItem?.name === weapon.name ? await this.bot.util.inv.customEquip(weapon, "hand") : false;
+        return heldItem?.name === weapon.name ? false :  await this.bot.util.inv.customEquip(weapon, "hand") ;
     }
 
     getWeaponOfEntity(entity?: Entity): Item {
@@ -95,10 +96,11 @@ export class SwordPvpTwo extends EventEmitter {
     checkForShield = async () => {
         if (!this.target) return;
         if ((this.target.metadata[8] as any) === 3 && this.target.equipment[1]?.name === "shield") {
+
             if (!this.targetShielding) this.ticksSinceLastSwitch = 0;
             this.targetShielding = true;
             if (this.ticksSinceTargetAttack >= 3 && this.ticksSinceLastSwitch >= 3) {
-                // if (this.weaponOfChoice === "_axe") return; //assume already attacking
+                if (this.weaponOfChoice === "_axe") return; //assume already attacking
                 const itemToChangeTo = await this.checkForWeapon("_axe");
                 if (itemToChangeTo) {
                     const switched = await this.equipWeapon(itemToChangeTo);
@@ -135,7 +137,6 @@ export class SwordPvpTwo extends EventEmitter {
         if (!this.target) return;
         if (entity === this.bot.entity) {
             this.ticksSinceLastHurt = 0;
-            // console.log(this.ticksSinceTargetAttack)
             if (this.options.kbCancelConfig.enabled) {
                 switch (this.options.kbCancelConfig.mode.name) {
                     case "velocity":
@@ -343,13 +344,15 @@ export class SwordPvpTwo extends EventEmitter {
             this.bot.clearControlStates();
             return;
         }
-        const range = this.botReach();
-        if (range > 4 && !this.targetGoal) {
+        const farAway = this.botReach() >= this.options.genericConfig.attackRange + 2;
+        if (farAway && !this.targetGoal) {
             this.targetGoal = GoalFactory.predictEntity(this.bot, this.target, 1, 10);
             this.bot.jumpPather.goto(this.targetGoal);
-        } else if (range <= 4) {
-            if (this.targetGoal) this.bot.jumpPather.stop();
-            this.targetGoal = undefined;
+        } else if (!farAway) {
+            if (this.targetGoal) {
+                this.bot.jumpPather.stop();
+                this.targetGoal = undefined;
+            }
             const conditional = this.botReach() > 0; //this.options.genericConfig.attackRange / 20;
             if (!this.bot.getControlState("back")) {
                 this.bot.setControlState("forward", conditional);
@@ -445,7 +448,7 @@ export class SwordPvpTwo extends EventEmitter {
                         this.target.position,
                         this.bot.entity.position,
                         // this.options.genericConfig.enemyReach
-                        this.bot.tracker.getEntitySpeed(this.target),
+                        this.bot.tracker.getEntitySpeed(this.target) ?? new Vec3(0, 0, 0),
                         PIOver3
                     );
                     if (!looking && this.wasInRange) break;
@@ -508,6 +511,7 @@ export class SwordPvpTwo extends EventEmitter {
 
     async reactionaryCrit() {
         if (!this.target) return;
+        if (this.tickOverride) return
         this.tickOverride = true;
         let i = 0;
         for (; i < 12; i++) {
@@ -531,10 +535,11 @@ export class SwordPvpTwo extends EventEmitter {
             return;
         }
         if (Math.random() < this.options.genericConfig.missChancePerTick) {
-            this.timeToNextAttack = 0;
+            // this.timeToNextAttack = 0;
+            await this.bot.waitForTicks(1)
+            await this.attemptAttack()
             return;
         }
-
         // if (this.timeToNextAttack <-1) console.trace(this.timeToNextAttack);
         attack(this.bot, this.target);
         this.firstHit = false;
