@@ -32,7 +32,7 @@ export const defaultConfig: FullConfig = {
     },
     critConfig: {
         enabled: true,
-        mode: "packet"
+        mode: "hop"
     },
     kbCancelConfig: {
         enabled: true,
