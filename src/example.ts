@@ -4,7 +4,8 @@ import { Vec3 } from "vec3";
 import { Entity } from "prismarine-entity";
 import { vectorMagnitude } from "./calc/mathUtilts";
 import { projectileGravity, ShotFactory } from "@nxg-org/mineflayer-trajectories";
-
+import {Movements} from "mineflayer-pathfinder"
+import md from "minecraft-data"
 import readline from "readline";
 let target: Entity | null = null;
 let defend = false;
@@ -19,18 +20,22 @@ class KillBot {
     public bot: Bot;
     constructor(num: number) {
         this.bot = createBot({
-            // username: "perfecthamburger5@gmail.com",
-            // password: "Silentnight76",
-            // host: "tourney.vanillalegacy.club",
-            // port: 25565,
             username: "pvp-testing" + num,
-            host: process.argv[3] ?? "localhost",
+            host: process.argv[3] ?? "minecraft.next-gen.dev",
             port: Number(process.argv[4]) ?? 25565,
             version: "1.17.1",
         });
         this.bot.loadPlugin(customPVP);
         this.bot.jumpPather.searchDepth = 10
-        this.bot.physics.yawSpeed = 50;
+        const moves = new Movements(this.bot, md(this.bot.version))
+        moves.allowFreeMotion = true;
+        moves.allowParkour = true
+        moves.allowSprinting = true
+        this.bot.pathfinder.setMovements(moves);
+
+    
+
+        this.bot.physics.yawSpeed = 50
         this.bot.once("spawn", async () => {
             // this.bot.swordpvp.options.critConfig.mode = "packet";
             this.bot.bowpvp.useOffhand = false;

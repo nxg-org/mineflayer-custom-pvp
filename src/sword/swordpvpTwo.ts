@@ -10,6 +10,7 @@ import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
 import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
 import { EventEmitter } from "stream";
 import { Vec3 } from "vec3";
+import { followEntity, stopFollow } from "./swordutil";
 const { getEntityAABB } = AABBUtils;
 
 const sleep = promisify(setTimeout);
@@ -95,26 +96,40 @@ export class SwordPvpTwo extends EventEmitter {
 
     checkForShield = async () => {
         if (!this.target) return;
+        if (!this.options.shieldDisableConfig.enabled) return;
         if ((this.target.metadata[8] as any) === 3 && this.target.equipment[1]?.name === "shield") {
 
             if (!this.targetShielding) this.ticksSinceLastSwitch = 0;
             this.targetShielding = true;
             if (this.ticksSinceTargetAttack >= 3 && this.ticksSinceLastSwitch >= 3) {
-                if (this.weaponOfChoice === "_axe") return; //assume already attacking
+                // if (this.weaponOfChoice === "_axe") return; //assume already attacking
                 const itemToChangeTo = await this.checkForWeapon("_axe");
                 if (itemToChangeTo) {
                     const switched = await this.equipWeapon(itemToChangeTo);
                     if (switched) {
                         this.weaponOfChoice = "_axe";
-                        await this.bot.waitForTicks(3);
-                        this.attemptAttack();
+                        this.tickOverride = true
+                        switch (this.options.shieldDisableConfig.mode) {
+                            case "single":
+                            case "double":
+                                this.tickOverride = true
+                                await this.bot.waitForTicks(3);
+                                await this.attemptAttack();
+                                if (this.options.shieldDisableConfig.mode === "single") break;
+                                await this.bot.waitForTicks(3);
+                                await this.attemptAttack();
+                           
+                           
+                        }
+                        this.tickOverride = false
+                    
                     }
                 }
             }
         } else {
             if (this.targetShielding) this.ticksSinceLastSwitch = 0;
             this.targetShielding = false;
-            if (this.weaponOfChoice === "sword") return; //assume already attacking
+            if (this.weaponOfChoice === "sword" || this.tickOverride) return; //assume already attacking
             const itemToChangeTo = await this.checkForWeapon("sword");
             if (itemToChangeTo) {
                 const switched = await this.equipWeapon(itemToChangeTo);
@@ -144,23 +159,25 @@ export class SwordPvpTwo extends EventEmitter {
                             const listener = (packet: any) => {
                                 const entity = this.bot.entities[packet.entityId];
                                 if (entity === this.bot.entity) {
-                                    if (this.options.kbCancelConfig.mode.hRatio) {
-                                        entity.velocity.x *= this.options.kbCancelConfig.mode.hRatio;
-                                        entity.velocity.z *= this.options.kbCancelConfig.mode.hRatio;
+                                    if (this.options.kbCancelConfig.mode.hRatio ||this.options.kbCancelConfig.mode.hRatio === 0 ) {
+                                        this.bot.entity.velocity.x *= this.options.kbCancelConfig.mode.hRatio;
+                                        this.bot.entity.velocity.z *= this.options.kbCancelConfig.mode.hRatio;
                                     }
-                                    if (this.options.kbCancelConfig.mode.yRatio)
-                                        entity.velocity.y *= this.options.kbCancelConfig.mode.yRatio;
-
+                                    if (this.options.kbCancelConfig.mode.yRatio ||this.options.kbCancelConfig.mode.yRatio === 0)
+                                        this.bot.entity.velocity.y *= this.options.kbCancelConfig.mode.yRatio;
+                                    this.bot._client.removeListener("entity_velocity", listener);
                                     resolve(undefined);
                                 }
                             };
-                            this.bot._client.removeListener("entity_velocity", listener);
+                            
                             setTimeout(() => {
                                 this.bot._client.removeListener("entity_velocity", listener);
                                 resolve(undefined);
                             }, 500);
                             this.bot._client.on("entity_velocity", listener);
                         });
+
+                        console.log(this.bot.entity.velocity)
                         return;
 
                     case "jump":
@@ -211,7 +228,7 @@ export class SwordPvpTwo extends EventEmitter {
         this.lastTarget = this.target;
         this.bot.tracker.stopTrackingEntity(this.target);
         this.target = undefined;
-        this.bot.jumpPather.stop();
+        stopFollow(this.bot, this.options.followConfig.mode)
         this.bot.clearControlStates();
         this.emit("stoppedAttacking");
     }
@@ -346,11 +363,10 @@ export class SwordPvpTwo extends EventEmitter {
         }
         const farAway = this.botReach() >= this.options.genericConfig.attackRange + 2;
         if (farAway && !this.targetGoal) {
-            this.targetGoal = GoalFactory.predictEntity(this.bot, this.target, 1, 10);
-            this.bot.jumpPather.goto(this.targetGoal);
+            this.targetGoal = followEntity(this.bot, this.target, this.options, 8);
         } else if (!farAway) {
             if (this.targetGoal) {
-                this.bot.jumpPather.stop();
+                stopFollow(this.bot, this.options.followConfig.mode)
                 this.targetGoal = undefined;
             }
             const conditional = this.botReach() > 0; //this.options.genericConfig.attackRange / 20;

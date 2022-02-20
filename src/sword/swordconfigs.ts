@@ -6,17 +6,17 @@ export interface FullConfig {
     swingConfig: SwingBehaviorConfig;
     critConfig: CriticalsConfig;
     shieldConfig: ShieldConfig;
+    shieldDisableConfig: ShieldDisableConfig;
     rotateConfig: RotateConfig;
+    followConfig: FollowConfig;
 }
-
 
 export const defaultConfig: FullConfig = {
     genericConfig: {
         viewDistance: 128,
-        attackRange: 2.8,
-        missChancePerTick: 0.2,
+        attackRange: 3,
+        missChancePerTick: 0.0,
         enemyReach: 3,
-        updateForShielding: true
     },
     tapConfig: {
         enabled: true,
@@ -32,14 +32,14 @@ export const defaultConfig: FullConfig = {
     },
     critConfig: {
         enabled: true,
-        mode: "hop"
+        mode: "packet"
     },
     kbCancelConfig: {
         enabled: true,
         // mode: {
         //     name: "velocity",
-        //     // hRatio: 2,
-        //     // yRatio: 2,
+        //     hRatio: 0,
+        //     yRatio: 0,
         // }
         mode: {
             name: "jump",
@@ -54,11 +54,24 @@ export const defaultConfig: FullConfig = {
         enabled: true,
         mode: "legit"
     },
+    shieldDisableConfig: {
+        enabled: true,
+        mode: "single" // not used rn
+    },
     swingConfig: {
-        mode: "fullswing"
+        mode: "killaura"
+    },
+    followConfig: {
+        mode: "standard",
+        distance: 3
     }
 
 
+}
+
+export interface ShieldDisableConfig {
+    enabled: boolean,
+    mode: "single" | "double"
 }
 
 export interface GenericConfig {
@@ -66,7 +79,6 @@ export interface GenericConfig {
     attackRange: number;
     missChancePerTick: number;
     enemyReach: number;
-    updateForShielding: boolean;
 }
 
 
@@ -115,3 +127,9 @@ export interface RotateConfig {
     enabled: boolean;
     mode: "legit" | "instant" | "constant" | "silent" | "ignore";
 }
+
+export interface FollowConfig {
+    mode: "jump" | "standard",
+    distance: number;
+}
+
