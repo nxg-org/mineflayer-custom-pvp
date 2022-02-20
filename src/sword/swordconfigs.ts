@@ -59,7 +59,7 @@ export const defaultConfig: FullConfig = {
         mode: "single" // not used rn
     },
     swingConfig: {
-        mode: "killaura"
+        mode: "fullswing"
     },
     followConfig: {
         mode: "standard",
