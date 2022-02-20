@@ -176,8 +176,6 @@ export class SwordPvpTwo extends EventEmitter {
                             }, 500);
                             this.bot._client.on("entity_velocity", listener);
                         });
-
-                        console.log(this.bot.entity.velocity)
                         return;
 
                     case "jump":
