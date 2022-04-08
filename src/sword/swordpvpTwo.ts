@@ -258,12 +258,12 @@ export class SwordPvpTwo extends EventEmitter {
 
     botReach(): number {
         if (!this.target) return 10000;
-        return getEntityAABB(this.target).distanceTo(this.bot.entity.position.offset(0, this.bot.entity.height, 0));
+        return getEntityAABB(this.target).distanceToVec(this.bot.entity.position.offset(0, this.bot.entity.height, 0));
     }
 
     targetReach(): number {
         if (!this.target) return 10000;
-        return getEntityAABB(this.bot.entity).distanceTo(this.target.position.offset(0, this.target.height, 0));
+        return getEntityAABB(this.bot.entity).distanceToVec(this.target.position.offset(0, this.target.height, 0));
     }
 
     checkRange() {
@@ -467,6 +467,7 @@ export class SwordPvpTwo extends EventEmitter {
                     );
                     if (!looking && this.wasInRange) break;
                     await this.bot.waitForTicks(1);
+                    await sleep(0);
                 } while (this.botReach() < this.options.genericConfig.attackRange + 0.1);
 
                 this.bot.setControlState("back", false);

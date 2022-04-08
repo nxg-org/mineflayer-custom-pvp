@@ -37,7 +37,7 @@ class PredictiveGoal extends goals.GoalFollow {
         const p = this.predictiveFunction(
             this.entity.position.minus(this.bot.entity.position),
             this.entity.position,
-            this.bot.tracker.getEntitySpeed(this.entity)
+            this.bot.tracker.getEntitySpeed(this.entity) || new Vec3(0, 0, 0)
         );
         const dx = this.x - p.x;
         const dy = this.y - p.y;
