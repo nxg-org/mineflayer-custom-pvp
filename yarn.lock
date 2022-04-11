@@ -469,9 +469,9 @@ prismarine-entity@^2.0.0:
     vec3 "^0.1.4"
 
 prismarine-item@^1.10.0, prismarine-item@^1.10.1, prismarine-item@^1.11.0, prismarine-item@^1.11.1, prismarine-item@^1.11.2, prismarine-item@^1.5.0:
-  version "1.11.3"
-  resolved "https://registry.yarnpkg.com/prismarine-item/-/prismarine-item-1.11.3.tgz#8f0bec484895cad33d36381289e1a16f5b57db2e"
-  integrity sha512-3zgExGF6hektrRlvarkh+il2wp4EyPzi7oJiOxabeaqSfc17taBbJubPJeEZHdi7sy4sB0diF10PgrESD8mc3Q==
+  version "1.11.4"
+  resolved "https://registry.yarnpkg.com/prismarine-item/-/prismarine-item-1.11.4.tgz#30487752da0209d252440ef35ffaf3827c6bc291"
+  integrity sha512-hWzSm0cXLvgLvoTM28lX1ody4q8hRMgZH3GngGczb9Ipc/qEf3/+zBX6LA4giBeK4MHFVYbwTCVkp/F8GscgQg==
   dependencies:
     minecraft-data "^2.118.0"
     prismarine-nbt "^2.0.0"
