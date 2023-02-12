@@ -5,7 +5,7 @@ import { promisify } from "util";
 import { getTargetYaw, lookingAt, lookingAtXZ, movingAt, toRadians } from "../calc/mathUtilts";
 import { attack } from "../util";
 import { attackSpeeds, MaxDamageOffset } from "./sworddata";
-import { CriticalsConfig, defaultConfig, FullConfig, RotateConfig, ShieldConfig, SwingBehaviorConfig } from "./swordconfigs";
+import { CriticalsConfig, defaultSwordConfig, SwordFullConfig, RotateConfig, ShieldConfig, SwingBehaviorConfig } from "./swordconfigs";
 import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
 import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
 import { EventEmitter } from "stream";
@@ -15,14 +15,15 @@ const { getEntityAABB } = AABBUtils;
 
 const sleep = promisify(setTimeout);
 const PI = Math.PI;
-const TwoPI = Math.PI * 2;
-const PIOver3 = Math.PI / 3;
-const Degrees_135 = toRadians(135);
+const TWO_PI = Math.PI * 2;
+const PI_OVER_3 = Math.PI / 3;
+const DEGREES_135 = toRadians(135);
+const DEFAULT_SPEED = new Vec3(0, 0, 0);
 
 /**
  * The main pvp manager plugin class.
  */
-export class SwordPvpTwo extends EventEmitter {
+export class SwordPvp extends EventEmitter {
     public timeToNextAttack: number = 0;
     public ticksSinceTargetAttack: number = 0;
     public ticksSinceLastHurt: number = 0;
@@ -41,16 +42,16 @@ export class SwordPvpTwo extends EventEmitter {
     private strafeCounter: number = 0;
     private targetGoal?: any;
 
-    constructor(public bot: Bot, public options: FullConfig = defaultConfig) {
+    constructor(public bot: Bot, public options: SwordFullConfig = defaultSwordConfig) {
         super();
         this.meleeAttackRate = new MaxDamageOffset(this.bot);
         this.bot.on("physicsTick", this.update);
         this.bot.on("physicsTick", this.checkForShield);
         this.bot.on("entityGone", (e) => {
             if (e === this.target) {
-                this.bot.chat(
-                    `Fought ${this.target.username ?? this.target.name}. They died, I finished with ${this.bot.health.toFixed(2)} HP.`
-                );
+                // this.bot.chat(
+                //     `Fought ${this.target.username ?? this.target.name}. I finished with ${this.bot.health.toFixed(2)} HP, they finished with ${this.target.health?.toFixed(2)} HP.`
+                // );
                 this.stop();
             }
         });
@@ -81,7 +82,7 @@ export class SwordPvpTwo extends EventEmitter {
 
     async equipWeapon(weapon: Item): Promise<boolean> {
         const heldItem = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("hand")];
-        return heldItem?.name === weapon.name ? false :  await this.bot.util.inv.customEquip(weapon, "hand") ;
+        return heldItem?.name === weapon.name ? false : await this.bot.util.inv.customEquip(weapon, "hand");
     }
 
     getWeaponOfEntity(entity?: Entity): Item {
@@ -118,11 +119,11 @@ export class SwordPvpTwo extends EventEmitter {
                                 if (this.options.shieldDisableConfig.mode === "single") break;
                                 await this.bot.waitForTicks(3);
                                 await this.attemptAttack();
-                           
-                           
+
+
                         }
                         this.tickOverride = false
-                    
+
                     }
                 }
             }
@@ -159,17 +160,17 @@ export class SwordPvpTwo extends EventEmitter {
                             const listener = (packet: any) => {
                                 const entity = this.bot.entities[packet.entityId];
                                 if (entity === this.bot.entity) {
-                                    if (this.options.kbCancelConfig.mode.hRatio ||this.options.kbCancelConfig.mode.hRatio === 0 ) {
+                                    if (this.options.kbCancelConfig.mode.hRatio || this.options.kbCancelConfig.mode.hRatio === 0) {
                                         this.bot.entity.velocity.x *= this.options.kbCancelConfig.mode.hRatio;
                                         this.bot.entity.velocity.z *= this.options.kbCancelConfig.mode.hRatio;
                                     }
-                                    if (this.options.kbCancelConfig.mode.yRatio ||this.options.kbCancelConfig.mode.yRatio === 0)
+                                    if (this.options.kbCancelConfig.mode.yRatio || this.options.kbCancelConfig.mode.yRatio === 0)
                                         this.bot.entity.velocity.y *= this.options.kbCancelConfig.mode.yRatio;
                                     this.bot._client.removeListener("entity_velocity", listener);
                                     resolve(undefined);
                                 }
                             };
-                            
+
                             setTimeout(() => {
                                 this.bot._client.removeListener("entity_velocity", listener);
                                 resolve(undefined);
@@ -204,7 +205,7 @@ export class SwordPvpTwo extends EventEmitter {
                 }
             }
 
-            if (this.options.swingConfig.mode === "fullswing") this.reactionaryCrit();
+            if (this.options.swingConfig.mode === "fullswing" && this.options.critConfig.enabled) this.reactionaryCrit();
         }
     };
 
@@ -258,12 +259,12 @@ export class SwordPvpTwo extends EventEmitter {
 
     botReach(): number {
         if (!this.target) return 10000;
-        return getEntityAABB(this.target).distanceToVec(this.bot.entity.position.offset(0, this.bot.entity.height, 0));
+        return getEntityAABB(this.target).distanceToVec(this.bot.entity.position.offset(0, 1.62, 0));
     }
 
     targetReach(): number {
         if (!this.target) return 10000;
-        return getEntityAABB(this.bot.entity).distanceToVec(this.target.position.offset(0, this.target.height, 0));
+        return getEntityAABB(this.bot.entity).distanceToVec(this.target.position.offset(0, this.target.height == 1.8 ? 1.62 : this.target.height, 0));
     }
 
     checkRange() {
@@ -373,6 +374,8 @@ export class SwordPvpTwo extends EventEmitter {
                 this.bot.setControlState("sprint", conditional);
             }
         }
+
+        // console.log(`${(this.bot.pathfinder.goal as any)?.x} ${(this.bot.pathfinder.goal as any)?.y} ${(this.bot.pathfinder.goal as any)?.z}`)
     }
 
     async doStrafe() {
@@ -386,7 +389,7 @@ export class SwordPvpTwo extends EventEmitter {
         }
         if (!this.options.strafeConfig.enabled) return false;
         const diff = getTargetYaw(this.target.position, this.bot.entity.position) - this.target.yaw;
-        const shouldMove = Math.abs(diff) < (this.options.strafeConfig.mode.maxOffset ?? PIOver3);
+        const shouldMove = Math.abs(diff) < (this.options.strafeConfig.mode.maxOffset ?? PI_OVER_3);
         if (!shouldMove) {
             if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
             this.currentStrafeDir = undefined;
@@ -442,7 +445,7 @@ export class SwordPvpTwo extends EventEmitter {
     }
 
     async sprintTap() {
-        if (!this.target) return;
+        if (!this.target) return false;
         if (!this.bot.entity.onGround) return false;
         if (!this.wasInRange) return false;
         if (!this.options.tapConfig.enabled) return false;
@@ -450,6 +453,7 @@ export class SwordPvpTwo extends EventEmitter {
             case "wtap":
                 this.bot.setControlState("forward", false);
                 this.bot.setControlState("sprint", false);
+                await this.bot.waitForTicks(this.options.tapConfig.delay);
                 this.bot.setControlState("forward", true);
                 this.bot.setControlState("sprint", true);
                 break;
@@ -462,12 +466,11 @@ export class SwordPvpTwo extends EventEmitter {
                         this.target.position,
                         this.bot.entity.position,
                         // this.options.genericConfig.enemyReach
-                        this.bot.tracker.getEntitySpeed(this.target) ?? new Vec3(0, 0, 0),
-                        PIOver3
+                        this.bot.tracker.getEntitySpeed(this.target) ?? DEFAULT_SPEED,
+                        PI_OVER_3
                     );
                     if (!looking && this.wasInRange) break;
                     await this.bot.waitForTicks(1);
-                    await sleep(0);
                 } while (this.botReach() < this.options.genericConfig.attackRange + 0.1);
 
                 this.bot.setControlState("back", false);
@@ -503,6 +506,7 @@ export class SwordPvpTwo extends EventEmitter {
         const pos = this.target.position.offset(0, this.target.height, 0);
         if (this.options.rotateConfig.mode === "constant") {
             this.bot.lookAt(pos);
+            // this.bot.util.move.forceLookAt(pos, true);
             return;
         } else {
             if (this.timeToNextAttack !== -1) return;
@@ -514,7 +518,7 @@ export class SwordPvpTwo extends EventEmitter {
                     this.bot.lookAt(pos, true);
                     break;
                 case "silent":
-                    this.bot.util.move.forceLookAt(pos);
+                    this.bot.util.move.forceLookAt(pos, true);
                     break;
                 case "ignore":
                     break;
@@ -534,7 +538,7 @@ export class SwordPvpTwo extends EventEmitter {
             await this.bot.waitForTicks(1);
         }
         this.bot.setControlState("sprint", false);
-        await this.attemptAttack();
+        if (this.timeToNextAttack < 2) await this.attemptAttack();
         // for (let i = 0; i < 10; i++) {
         //     if (this.bot.entity.onGround) break;
         //     await this.bot.waitForTicks(1);

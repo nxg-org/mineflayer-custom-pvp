@@ -1,4 +1,4 @@
-export interface FullConfig {
+export interface SwordFullConfig {
     genericConfig: GenericConfig
     tapConfig: TapConfig
     kbCancelConfig: KBConfig
@@ -11,7 +11,7 @@ export interface FullConfig {
     followConfig: FollowConfig;
 }
 
-export const defaultConfig: FullConfig = {
+export const defaultSwordConfig: SwordFullConfig = {
     genericConfig: {
         viewDistance: 128,
         attackRange: 3,
@@ -43,7 +43,7 @@ export const defaultConfig: FullConfig = {
         // }
         mode: {
             name: "jump",
-            delay: 5
+            delay: 0
         }
     },
     rotateConfig: {

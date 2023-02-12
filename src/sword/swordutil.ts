@@ -2,7 +2,7 @@ import { Entity } from "prismarine-entity";
 import {goals} from "mineflayer-pathfinder"
 import { Bot } from "mineflayer";
 import { Vec3 } from "vec3";
-import { FollowConfig, FullConfig } from "./swordconfigs";
+import { FollowConfig, SwordFullConfig } from "./swordconfigs";
 import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
 
 
@@ -39,6 +39,7 @@ class PredictiveGoal extends goals.GoalFollow {
             this.entity.position,
             this.bot.tracker.getEntitySpeed(this.entity) || new Vec3(0, 0, 0)
         );
+
         const dx = this.x - p.x;
         const dy = this.y - p.y;
         const dz = this.z - p.z;
@@ -65,13 +66,14 @@ class PredictiveGoal extends goals.GoalFollow {
 }
 
 
-export function followEntity(bot: Bot, entity: Entity, options: FullConfig, predictTicks: number) {
+export function followEntity(bot: Bot, entity: Entity, options: SwordFullConfig, predictTicks: number) {
     switch (options.followConfig.mode) {
         case "jump":
             const tmp1 = GoalFactory.predictEntity(bot, entity, options.followConfig.distance, predictTicks)
             bot.jumpPather.goto(tmp1);
             return tmp1
         case "standard":
+            // const tmp2 = new goals.GoalFollow(entity, options.followConfig.distance);
             const tmp2 = new PredictiveGoal(bot, entity, options.followConfig.distance, predictTicks);
             bot.pathfinder.setGoal(tmp2, true);
             return tmp2;
