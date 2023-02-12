@@ -1,6 +1,6 @@
 {
   "name": "@nxg-org/mineflayer-custom-pvp",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Intermediate functionality for bow and sword pvp.",
   "keywords": [
     "mineflayer",
@@ -24,7 +24,7 @@
   "dependencies": {
     "@nxg-org/mineflayer-jump-pathing": "^1.1.0",
     "@nxg-org/mineflayer-tracker": "^1.1.1",
-    "@nxg-org/mineflayer-trajectories": "^1.0.15",
+    "@nxg-org/mineflayer-trajectories": "^1.1.1",
     "@nxg-org/mineflayer-util-plugin": "^1.4.0"
   },
   "devDependencies": {
