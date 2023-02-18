@@ -1,10 +1,10 @@
 import { Bot, createBot } from "mineflayer";
-import customPVP from "./index";
+import customPVP from "../src/index";
 import { Vec3 } from "vec3";
 import { Entity } from "prismarine-entity";
-import { vectorMagnitude } from "./calc/mathUtilts";
+import { vectorMagnitude } from "../src/calc/mathUtils";
 import { projectileGravity, ShotFactory } from "@nxg-org/mineflayer-trajectories";
-import {Movements} from "mineflayer-pathfinder"
+import {Movements, pathfinder} from "mineflayer-pathfinder"
 import md from "minecraft-data"
 import readline from "readline";
 let target: Entity | null = null;
@@ -21,23 +21,27 @@ class KillBot {
     constructor(num: number) {
         this.bot = createBot({
             username: "pvp-testing" + num,
-            host: process.argv[3] ?? "minecraft.next-gen.dev",
-            port: Number(process.argv[4]) ?? 25565,
-            version: "1.17.1",
+            host: process.argv[2],
+            port: Number(process.argv[3]) ?? 25565,
+            version: "1.18.2",
         });
         this.bot.loadPlugin(customPVP);
+        this.bot.loadPlugin(pathfinder);
         this.bot.jumpPather.searchDepth = 10
-        const moves = new Movements(this.bot, md(this.bot.version))
+
+        const moves = new Movements(this.bot, this.bot.registry)
         moves.allowFreeMotion = true;
         moves.allowParkour = true
         moves.allowSprinting = true
         this.bot.pathfinder.setMovements(moves);
-
+            console.log("hi")
     
 
         this.bot.physics.yawSpeed = 50
         this.bot.once("spawn", async () => {
+            // this.bot.swordpvp.options.followConfig.mode = "jump"
             // this.bot.swordpvp.options.critConfig.mode = "packet";
+            // this.bot.swordpvp.options.tapConfig.enabled = false
             this.bot.bowpvp.useOffhand = false;
             this.bot.setControlState("forward", true);
             await this.bot.waitForTicks(20);
@@ -80,8 +84,6 @@ class KillBot {
         //     }
         // });
 
-        this.bot.setMaxListeners(100);
-
         this.bot.on("kicked", console.log);
         this.bot.on("end", console.log);
         this.bot.on("message", (message) => {
@@ -114,9 +116,6 @@ class KillBot {
                     break;
                 case "sword":
                     this.bot.on("physicsTick", this.fight);
-                    // target = this.bot.nearestEntity((e) => (e.username ?? e.name) === split[1]) ?? this.bot.nearestEntity((e) => e.type === "player" && !e.username?.includes("pvp-testing"));
-
-                    // this.bot.util.move.followEntityWithRespectRange(target, 2);
                     break;
                 case "rangestop":
                     this.bot.bowpvp.stop();

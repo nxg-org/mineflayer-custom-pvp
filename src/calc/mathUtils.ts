@@ -2,7 +2,6 @@ import { AABB, AABBUtils } from "@nxg-org/mineflayer-util-plugin";
 import type { Entity } from "prismarine-entity";
 import type { Bot } from "mineflayer";
 import { Vec3 } from "vec3";
-import { getEntityAABB } from "./aabbUtils";
 
 const PI = Math.PI;
 const PI_2 = Math.PI * 2;
@@ -158,7 +157,7 @@ export function applyVec3Gravity(currentVel: Vec3, gravity: Vec3) {
 }
 
 export function movingTowards(origin: Vec3, destination: Vec3, velocity: Vec3) {
-    return origin.distanceTo(destination) < origin.plus(velocity).distanceTo(destination);
+    return origin.distanceTo(destination) >= origin.plus(velocity).distanceTo(destination);
 }
 
 export function movingAt(origin: Vec3, destination: Vec3, velocity: Vec3, maxOffset: number) {

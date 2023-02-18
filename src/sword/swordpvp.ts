@@ -2,11 +2,12 @@ import { Bot, ControlState } from "mineflayer";
 import { Entity } from "prismarine-entity";
 import { Item } from "prismarine-item";
 import { promisify } from "util";
-import { getTargetYaw } from "../calc/mathUtilts";
+import { getTargetYaw } from "../calc/mathUtils";
 import { attack } from "../util";
 import { attackSpeeds } from "./sworddata";
 import { CriticalsConfig, FullConfig, RotateConfig, ShieldConfig, SwingBehaviorConfig } from "./swordconfigs";
 import EventEmitter from "events";
+import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
 const sleep = promisify(setTimeout);
 const PI = Math.PI;
 const TwoPI = Math.PI * 2;
@@ -175,7 +176,7 @@ export class SwordPvp extends EventEmitter {
     trueDistance(): number {
         if (!this.target) return 10000;
         const { x, y, z } = this.bot.entity.position.offset(0, this.bot.entity.height, 0);
-        const aabb = this.bot.util.entity.getEntityAABB(this.target);
+        const aabb = AABBUtils.getEntityAABB(this.target);
         let dx = Math.max(aabb.minX - x, 0, x - aabb.maxX);
         let dy = Math.max(aabb.minY - y, 0, y - aabb.maxY);
         let dz = Math.max(aabb.minZ - z, 0, z - aabb.maxZ);

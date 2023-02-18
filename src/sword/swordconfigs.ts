@@ -15,6 +15,7 @@ export const defaultConfig: FullConfig = {
     genericConfig: {
         viewDistance: 128,
         attackRange: 3,
+        tooCloseRange: 1.5,
         missChancePerTick: 0.0,
         enemyReach: 3,
     },
@@ -77,6 +78,7 @@ export interface ShieldDisableConfig {
 export interface GenericConfig {
     viewDistance: number;
     attackRange: number;
+    tooCloseRange: number;
     missChancePerTick: number;
     enemyReach: number;
 }
@@ -113,10 +115,10 @@ export interface KBModeConfig {
     hRatio?: number
     yRatio?: number
 }
-export interface CriticalsConfig {
+export type CriticalsConfig = {
     enabled: boolean;
-    mode: "packet" | "shorthop" | "hop";
-}
+    mode: "hop" | "shorthop";
+} | {enabled: boolean, mode: "packet", bypass?: boolean}
 
 export interface ShieldConfig {
     enabled: boolean;

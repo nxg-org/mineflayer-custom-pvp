@@ -79,12 +79,6 @@ export function followEntity(bot: Bot, entity: Entity, options: FullConfig, pred
 }
 
 export function stopFollow(bot: Bot, mode: FollowConfig["mode"]) {
-    switch (mode) {
-        case "jump":
-            bot.jumpPather.stop();
-            break;
-        case "standard":
-            bot.pathfinder.setGoal(null);
-            break;
-    }
+    bot.jumpPather.stop();
+    bot.pathfinder.stop();
 }
