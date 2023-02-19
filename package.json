@@ -1,6 +1,6 @@
 {
   "name": "@nxg-org/mineflayer-custom-pvp",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Intermediate functionality for bow and sword pvp.",
   "keywords": [
     "mineflayer",
@@ -20,7 +20,7 @@
     "build": "npx tsc",
     "prepublish": "npm run build",
     "ts:test": "ts-node -T example/example.ts",
-    "js:test": "node --trace-warnings "
+    "js:test": "node --trace-warnings example/example.js"
   },
   "dependencies": {
     "@nxg-org/mineflayer-jump-pathing": "^1.1.0",
