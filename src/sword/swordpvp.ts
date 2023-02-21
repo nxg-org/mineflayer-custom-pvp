@@ -1,44 +1,32 @@
+import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
 import { Bot, ControlState } from "mineflayer";
 import { Entity } from "prismarine-entity";
 import { Item } from "prismarine-item";
+import { EventEmitter } from "stream";
 import { promisify } from "util";
+import { Vec3 } from "vec3";
 import {
-  dirToYawAndPitch,
   getTargetYaw,
   lookingAt,
-  lookingAtXZ,
   movingAt,
-  movingTowards,
-  toRadians,
+  toRadians
 } from "../calc/mathUtils";
 import { attack } from "../util";
-import { attackSpeeds, MaxDamageOffset } from "./sworddata";
 import {
-  CriticalsConfig,
   defaultConfig,
-  FullConfig,
-  RotateConfig,
-  ShieldConfig,
-  SwingBehaviorConfig,
+  FullConfig
 } from "./swordconfigs";
-import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
-import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
-import { EventEmitter } from "stream";
-import { Vec3 } from "vec3";
+import { MaxDamageOffset } from "./sworddata";
 import { followEntity, stopFollow } from "./swordutil";
 const { getEntityAABB } = AABBUtils;
 
-const sleep = promisify(setTimeout);
-const PI = Math.PI;
-const TwoPI = Math.PI * 2;
 const PIOver3 = Math.PI / 3;
-const Degrees_135 = toRadians(135);
 
 /**
  * The main pvp manager plugin class.
  */
 export class SwordPvp extends EventEmitter {
-  public timeToNextAttack: number = 0;
+  public ticksToNextAttack: number = 0;
   public ticksSinceTargetAttack: number = 0;
   public ticksSinceLastHurt: number = 0;
   public ticksSinceLastTargetHit: number = 0;
@@ -136,7 +124,7 @@ export class SwordPvp extends EventEmitter {
         const switched = await this.equipWeapon(itemToChangeTo);
         if (switched) {
           this.weaponOfChoice = "sword";
-          this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
+          this.ticksToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
         }
       }
     }
@@ -227,7 +215,7 @@ export class SwordPvp extends EventEmitter {
     this.stop();
     this.target = target;
     if (!this.target) return;
-    this.timeToNextAttack = 0;
+    this.ticksToNextAttack = 0;
     const itemToChangeTo = await this.checkForWeapon();
     if (itemToChangeTo) await this.equipWeapon(itemToChangeTo);
     this.bot.tracker.trackEntity(target);
@@ -248,7 +236,7 @@ export class SwordPvp extends EventEmitter {
   // per tick.
   update = () => {
     if (!this.target) return;
-    this.timeToNextAttack--;
+    this.ticksToNextAttack--;
     this.ticksSinceTargetAttack++;
     this.ticksSinceLastHurt++;
     this.ticksSinceLastTargetHit++;
@@ -260,7 +248,7 @@ export class SwordPvp extends EventEmitter {
     this.causeCritical();
     this.toggleShield();
 
-    if (this.timeToNextAttack <= -1 && !this.tickOverride) {
+    if (this.ticksToNextAttack <= -1 && !this.tickOverride) {
       if (this.bot.entity.velocity.y <= -0.25) this.bot.setControlState("sprint", false);
       this.attemptAttack("normal");
       if (this.bot.entity.onGround) this.sprintTap();
@@ -270,13 +258,6 @@ export class SwordPvp extends EventEmitter {
 
   botReach(): number {
     if (!this.target) return 10000;
-
-    // const eyeToFoot = this.bot.entity.position.offset(0, this.bot.entity.height, 0).distanceTo(this.target.position)
-    // const footToEye = this.bot.entity.position.distanceTo(this.target.position.offset(0, this.target.height, 0))
-    // const footToFoot = this.bot.entity.position.distanceTo(this.target.position);
-
-    // return Math.min(eyeToFoot, footToEye, footToFoot);
-
     const eye = getEntityAABB(this.target).distanceToVec(this.bot.entity.position.offset(0, this.bot.entity.height, 0));
     const foot = getEntityAABB(this.target).distanceToVec(this.bot.entity.position);
     return Math.min(eye, foot);
@@ -294,7 +275,7 @@ export class SwordPvp extends EventEmitter {
     const dist = this.target.position.distanceTo(this.bot.entity.position);
     if (dist > this.options.genericConfig.viewDistance) return this.stop();
     const inRange = this.botReach() <= this.options.genericConfig.attackRange;
-    if (!this.wasInRange && inRange && this.options.swingConfig.mode === "killaura") this.timeToNextAttack = -1;
+    if (!this.wasInRange && inRange && this.options.swingConfig.mode === "killaura") this.ticksToNextAttack = -1;
     this.wasInRange = inRange;
   }
 
@@ -303,7 +284,7 @@ export class SwordPvp extends EventEmitter {
     if ((this.bot.entity as any).isInWater || (this.bot.entity as any).isInLava) return false;
     switch (this.options.critConfig.mode) {
       case "packet":
-        if (this.timeToNextAttack !== -1) return false;
+        if (this.ticksToNextAttack !== -1) return false;
         if (!this.wasInRange) return false;
         if (!this.bot.entity.onGround) return false;
         if (this.options.critConfig.bypass) {
@@ -326,7 +307,7 @@ export class SwordPvp extends EventEmitter {
 
         return true;
       case "shorthop":
-        if (this.timeToNextAttack !== 1) return false;
+        if (this.ticksToNextAttack !== 1) return false;
         if (!this.bot.entity.onGround) return false;
         if (this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange))
           return false;
@@ -338,28 +319,19 @@ export class SwordPvp extends EventEmitter {
         this.bot.entity.position = this.bot.entity.position.set(dx, Math.floor(dy), dz);
         return true;
       case "hop":
-        if (this.timeToNextAttack > 8) return false;
+        if (this.ticksToNextAttack > 8) return false;
         const inReach =
           this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange);
         if (!inReach) return false;
-        if (this.timeToNextAttack !== 8 && !this.willBeFirstHit) {
+        if (this.ticksToNextAttack !== 8 && !this.willBeFirstHit) {
           return false;
         }
         if (this.willBeFirstHit && !this.bot.entity.onGround) {
-          // if (!this.bot.entity.onGround) {
           this.reactionaryCrit(true);
           return true;
-          // }
         }
-
-        // console.log(this.botReach(), this.options.critConfig.attemptRange, (this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange)));
-
-        // const roughGroundCheck = this.target.position.y.toFixed(5).split(".")[1].charAt(4) === "0";
-        // if (roughGroundCheck) return false;
         this.bot.setControlState("jump", true);
         this.bot.setControlState("jump", false);
-        // console.log("jump!")
-
         return true;
       default:
         return false;
@@ -506,7 +478,7 @@ export class SwordPvp extends EventEmitter {
   }
 
   async toggleShield() {
-    if (this.timeToNextAttack !== 0 || !this.target || !this.wasInRange) return false;
+    if (this.ticksToNextAttack !== 0 || !this.target || !this.wasInRange) return false;
     const shield = this.shieldEquipped();
     const wasShieldActive = shield;
     if (wasShieldActive && this.options.shieldConfig.enabled && this.options.shieldConfig.mode === "legit") {
@@ -514,7 +486,7 @@ export class SwordPvp extends EventEmitter {
     }
 
     this.once("attackedTarget", async (entity) => {
-      await this.bot.waitForTicks(5);
+      await this.bot.waitForTicks(3);
       if (wasShieldActive && this.options.shieldConfig.enabled && this.options.shieldConfig.mode === "legit") {
         this.bot.activateItem(true);
       } else if (!this.bot.util.entity.isOffHandActive() && shield && this.options.shieldConfig.mode === "blatant") {
@@ -531,7 +503,7 @@ export class SwordPvp extends EventEmitter {
       this.bot.lookAt(pos);
       return;
     } else {
-      if (this.timeToNextAttack !== -1) return;
+      if (this.ticksToNextAttack !== -1) return;
       switch (this.options.rotateConfig.mode) {
         case "legit":
           this.bot.lookAt(pos);
@@ -575,12 +547,12 @@ export class SwordPvp extends EventEmitter {
 
 
 
-      if (this.bot.entity.velocity.y <= -0.25 && this.timeToNextAttack <= (-1 + (this.options.critConfig.reaction.maxPreemptiveTicks ?? 0))) {
+      if (this.bot.entity.velocity.y <= -0.25 && this.ticksToNextAttack <= (-1 + (this.options.critConfig.reaction.maxPreemptiveTicks ?? 0))) {
           break
       } 
 
       if (this.options.critConfig.reaction.maxWaitTicks && !noTickLimit) {
-        if (this.timeToNextAttack <= (-1 - this.options.critConfig.reaction.maxWaitTicks)) {
+        if (this.ticksToNextAttack <= (-1 - this.options.critConfig.reaction.maxWaitTicks)) {
           break;
         }
       }
@@ -609,8 +581,8 @@ export class SwordPvp extends EventEmitter {
     attack(this.bot, this.target);
     this.willBeFirstHit = false;
 
-    this.emit("attackedTarget", this.target, reason, this.timeToNextAttack);
-    this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
+    this.emit("attackedTarget", this.target, reason, this.ticksToNextAttack);
+    this.ticksToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
   }
 
   shieldEquipped() {

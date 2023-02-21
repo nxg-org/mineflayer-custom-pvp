@@ -143,11 +143,13 @@ export class BowPVP {
         this.bot.removeListener("physicsTick", this.getShotInfo);
         this.bot.removeListener("physicsTick", this.chargeHandling);
         if (this.target) this.bot.tracker.stopTrackingEntity(this.target);
+        if (this.shotCharging) {
+            if (this.shotInfo) this.bot.util.move.forceLook(this.shotInfo.yaw, this.shotInfo.pitch, true);
+            this.bot.deactivateItem();
+        }
         this.target = null;
         this.shotCharging = false;
         this.enabled = false;
-        if (this.shotCharging && this.shotInfo) this.bot.util.move.forceLook(this.shotInfo.yaw, this.shotInfo.pitch, true);
-        this.bot.deactivateItem();
     }
 
     /**
@@ -204,7 +206,7 @@ export class BowPVP {
         this.shotInit = performance.now();
 
         this.bot.activateItem(this.useOffhand);
-        while (!this.shotReady) await sleep(0);
+        while (!this.shotReady) await sleep(50);
         this.bot.deactivateItem();
 
         this.shotCharging = false;

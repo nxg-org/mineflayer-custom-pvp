@@ -1,10 +1,8 @@
 import { Bot } from "mineflayer";
-import { AABBComponents, BasicShotInfo, Shot, ShotFactory, InterceptFunctions } from "@nxg-org/mineflayer-trajectories";
-import { Entity } from "prismarine-entity";
-import { degreesToRadians, getTargetYaw, vectorMagnitude, yawPitchAndSpeedToDir } from "../calc/mathUtils";
-import { EntityTracker } from "@nxg-org/mineflayer-tracker";
+import { AABBComponents, BasicShotInfo, ShotFactory, InterceptFunctions } from "@nxg-org/mineflayer-trajectories";
+import { degreesToRadians, getTargetYaw } from "../calc/mathUtils";
 import { Vec3 } from "vec3";
-import { AABB, AABBUtils } from "@nxg-org/mineflayer-util-plugin";
+import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
 
 const emptyVec = new Vec3(0, 0, 0);
 const dv = Math.PI / 360;
@@ -69,8 +67,9 @@ export class ShotPlanner {
   }
 
   private shiftTargetPositions(target: AABBComponents, avgSpeed: Vec3, ...shotInfo: CheckShotInfo[]) {
+    avgSpeed.y = 0;
     const newInfo = shotInfo.map((i) =>
-      i.shift ? target.position.clone().add(avgSpeed.clone().scale(i.ticks + 4)) : target.position
+      i.shift ? target.position.clone().add(avgSpeed.scaled(i.ticks + 4)) : target.position
     ); //weird monkey patch.
     const allInfo: { target: AABBComponents; info: CheckShotInfo[] }[] = [];
     for (const position of newInfo) {
@@ -126,7 +125,7 @@ export class ShotPlanner {
       if (!shot.intersectPos) {
         if (hittingData.length !== 0) {
           const pitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
-          const ticks = hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length;
+          const ticks = Math.round(hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length);
           return { yaw, pitch, ticks, shift };
         } else if (pitch > PIOver3 && shot.nearestDistance < 1) {
           hittingData.push({ pitch, ticks: shot.totalTicks });
@@ -191,7 +190,7 @@ export class ShotPlanner {
       if (!shot.intersectPos) {
         if (hittingData.length !== 0) {
           const pitch = hittingData.map((e) => e.pitch).reduce((a, b) => a + b) / hittingData.length; //monkeypatch to hit feet.
-          const ticks = Math.ceil(hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length);
+          const ticks = Math.round(hittingData.map((e) => e.ticks).reduce((a, b) => a + b) / hittingData.length);
           possibleShotData.push({ yaw, pitch, ticks, shift });
           hittingData = [];
         } else if (pitch > PIOver3 && shot.nearestDistance < 1) {
