@@ -1,137 +1,153 @@
 export interface FullConfig {
-    genericConfig: GenericConfig
-    tapConfig: TapConfig
-    kbCancelConfig: KBConfig
-    strafeConfig: StrafeConfig
-    swingConfig: SwingBehaviorConfig;
-    critConfig: CriticalsConfig;
-    shieldConfig: ShieldConfig;
-    shieldDisableConfig: ShieldDisableConfig;
-    rotateConfig: RotateConfig;
-    followConfig: FollowConfig;
+  genericConfig: GenericConfig;
+  tapConfig: TapConfig;
+  onHitConfig: OnHitConfig;
+  strafeConfig: StrafeConfig;
+  swingConfig: SwingBehaviorConfig;
+  critConfig: CriticalsConfig;
+  shieldConfig: ShieldConfig;
+  shieldDisableConfig: ShieldDisableConfig;
+  rotateConfig: RotateConfig;
+  followConfig: FollowConfig;
 }
 
 export const defaultConfig: FullConfig = {
-    genericConfig: {
-        viewDistance: 128,
-        attackRange: 3,
-        tooCloseRange: 1.5,
-        missChancePerTick: 0.0,
-        enemyReach: 3,
+  genericConfig: {
+    viewDistance: 128,
+    attackRange: 3,
+    tooCloseRange: 1,
+    missChancePerTick: 0.0,
+    enemyReach: 3,
+  },
+  tapConfig: {
+    enabled: true,
+    mode: "stap",
+    delay: 0,
+  },
+  strafeConfig: {
+    enabled: true,
+    mode: {
+      mode: "intelligent",
+      maxOffset: Math.PI / 2,
     },
-    tapConfig: {
-        enabled: true,
-        mode: "stap",
-        delay: 0,
+  },
+  critConfig: {
+    enabled: true,
+    mode: "hop",
+    attemptRange: 5,
+    reaction: {
+      enabled: true,
+      maxPreemptiveTicks: 1,
+      maxWaitTicks: 5,
+      maxWaitDistance: 5,
     },
-    strafeConfig: {
-        enabled: true,
-        mode: {
-            name: "intelligent",
-            maxOffset: Math.PI / 2
-        }
+  },
+  onHitConfig: {
+    enabled: false,
+    mode: "backoff",
+    kbCancel: {
+      enabled: true,
+      mode: "jump",
     },
-    critConfig: {
-        enabled: true,
-        mode: "hop"
-    },
-    kbCancelConfig: {
-        enabled: true,
-        // mode: {
-        //     name: "velocity",
-        //     hRatio: 0,
-        //     yRatio: 0,
-        // }
-        mode: {
-            name: "jump",
-            delay: 5
-        }
-    },
-    rotateConfig: {
-        enabled: true,
-        mode: "constant"
-    },
-    shieldConfig: {
-        enabled: true,
-        mode: "legit"
-    },
-    shieldDisableConfig: {
-        enabled: true,
-        mode: "single" // not used rn
-    },
-    swingConfig: {
-        mode: "fullswing"
-    },
-    followConfig: {
-        mode: "standard",
-        distance: 3
+  },
+  rotateConfig: {
+    enabled: true,
+    mode: "constant",
+  },
+  shieldConfig: {
+    enabled: true,
+    mode: "legit",
+  },
+  shieldDisableConfig: {
+    enabled: true,
+    mode: "single", // not used rn
+  },
+  swingConfig: {
+    mode: "fullswing",
+  },
+  followConfig: {
+    mode: "standard",
+    distance: 3,
+    predict: false
+  },
+};
+
+export type ShieldDisableConfig = {
+  enabled: boolean;
+  mode: "single" | "double";
+};
+
+export type GenericConfig = {
+  viewDistance: number;
+  attackRange: number;
+  tooCloseRange: number;
+  missChancePerTick: number;
+  enemyReach: number;
+};
+
+export type SwingBehaviorConfig = {
+  mode: "killaura" | "fullswing";
+};
+
+export type StrafeModeConfig = {
+  mode: "circle" | "random" | "intelligent";
+  maxOffset?: number;
+};
+
+export type StrafeConfig = {
+  enabled: boolean;
+  mode: StrafeModeConfig;
+};
+
+export type TapConfig = {
+  enabled: boolean;
+  mode: "wtap" | "stap" | "sprintcancel";
+  delay: number;
+};
+
+export type KBConfig =
+  | {
+      enabled: boolean;
+      mode: "jump";
     }
+  | { enabled: boolean; mode: "velocity"; hRatio?: number; yRatio: number }
+  | { enabled: boolean; mode: "shift" | "jumpshift"; delay?: number };
 
+export type OnHitConfig = {
+  enabled: boolean;
+  mode: "backoff";
+  kbCancel: KBConfig;
+  tickCount?: number;
+};
 
-}
+export type ReactionCritConfig =
+  | {
+      enabled: false;
+    }
+  | { enabled: true; maxWaitTicks?: number; maxWaitDistance?: number; maxPreemptiveTicks?: number };
 
-export interface ShieldDisableConfig {
-    enabled: boolean,
-    mode: "single" | "double"
-}
-
-export interface GenericConfig {
-    viewDistance: number;
-    attackRange: number;
-    tooCloseRange: number;
-    missChancePerTick: number;
-    enemyReach: number;
-}
-
-
-export interface SwingBehaviorConfig {
-    mode: "killaura" | "fullswing";
-}
-
-export interface StrafeModeConfig {
-    name: "circle" | "random" | "intelligent"
-    maxOffset?: number
-}
-
-export interface StrafeConfig {
-    enabled: boolean
-    mode: StrafeModeConfig
-}
-
-export interface TapConfig {
-    enabled: boolean
-    mode: "wtap" | "stap" | "sprintcancel"
-    delay: number
-}
-
-export interface KBConfig {
-    enabled: boolean,
-    mode: KBModeConfig
-}
-
-export interface KBModeConfig {
-    name: "jump" | "shift" | "jumpshift" | "velocity",
-    delay?: number
-    hRatio?: number
-    yRatio?: number
-}
 export type CriticalsConfig = {
-    enabled: boolean;
-    mode: "hop" | "shorthop";
-} | {enabled: boolean, mode: "packet", bypass?: boolean}
+  enabled: boolean;
+  reaction: ReactionCritConfig;
+} & (
+  | {
+      mode: "hop" | "shorthop";
+      attemptRange?: number;
+    }
+  | { enabled: boolean; mode: "packet"; bypass?: boolean }
+);
 
-export interface ShieldConfig {
-    enabled: boolean;
-    mode: "legit" | "blatant";
-}
+export type ShieldConfig = {
+  enabled: boolean;
+  mode: "legit" | "blatant";
+};
 
-export interface RotateConfig {
-    enabled: boolean;
-    mode: "legit" | "instant" | "constant" | "silent" | "ignore";
-}
+export type RotateConfig = {
+  enabled: boolean;
+  mode: "legit" | "instant" | "constant" | "silent" | "ignore";
+};
 
-export interface FollowConfig {
-    mode: "jump" | "standard",
-    distance: number;
-}
-
+export type FollowConfig = {
+  mode: "jump" | "standard";
+  distance: number;
+} & ({ predict: false } | { predict: true, predictTicks?: number})

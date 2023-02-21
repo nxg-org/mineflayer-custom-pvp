@@ -2,410 +2,621 @@ import { Bot, ControlState } from "mineflayer";
 import { Entity } from "prismarine-entity";
 import { Item } from "prismarine-item";
 import { promisify } from "util";
-import { getTargetYaw } from "../calc/mathUtils";
+import {
+  dirToYawAndPitch,
+  getTargetYaw,
+  lookingAt,
+  lookingAtXZ,
+  movingAt,
+  movingTowards,
+  toRadians,
+} from "../calc/mathUtils";
 import { attack } from "../util";
-import { attackSpeeds } from "./sworddata";
-import { CriticalsConfig, FullConfig, RotateConfig, ShieldConfig, SwingBehaviorConfig } from "./swordconfigs";
-import EventEmitter from "events";
+import { attackSpeeds, MaxDamageOffset } from "./sworddata";
+import {
+  CriticalsConfig,
+  defaultConfig,
+  FullConfig,
+  RotateConfig,
+  ShieldConfig,
+  SwingBehaviorConfig,
+} from "./swordconfigs";
 import { AABBUtils } from "@nxg-org/mineflayer-util-plugin";
+import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
+import { EventEmitter } from "stream";
+import { Vec3 } from "vec3";
+import { followEntity, stopFollow } from "./swordutil";
+const { getEntityAABB } = AABBUtils;
+
 const sleep = promisify(setTimeout);
 const PI = Math.PI;
 const TwoPI = Math.PI * 2;
 const PIOver3 = Math.PI / 3;
+const Degrees_135 = toRadians(135);
 
 /**
  * The main pvp manager plugin class.
  */
 export class SwordPvp extends EventEmitter {
-    public timeToNextAttack: number = 0;
-    public ticksSinceTargetAttack: number = 0;
-    public ticksSinceLastSwitch: number = 0;
-    public wasInRange: boolean = false;
-    public viewDistance: number = 128;
-    public attackRange: number = 3;
-    public meleeAttackRate: MaxDamageOffset;
-    public shouldStrafe: boolean = false;
-    public swingConfig: SwingBehaviorConfig = {
-        mode: "fullswing",
-    };
+  public timeToNextAttack: number = 0;
+  public ticksSinceTargetAttack: number = 0;
+  public ticksSinceLastHurt: number = 0;
+  public ticksSinceLastTargetHit: number = 0;
+  public ticksSinceLastSwitch: number = 0;
+  public wasInRange: boolean = false;
+  public meleeAttackRate: MaxDamageOffset;
+  public target?: Entity;
+  public lastTarget?: Entity;
+  public weaponOfChoice: string = "sword";
+  private willBeFirstHit: boolean = true;
+  private tickOverride: boolean = false;
+  private targetShielding: boolean = false;
 
-    public critConfig: CriticalsConfig = {
-        enabled: true,
-        mode: "hop",
-    };
+  private currentStrafeDir?: ControlState;
+  private strafeCounter: number = 0;
+  private targetGoal?: any;
 
-    public shieldConfig: ShieldConfig = {
-        enabled: true,
-        mode: "legit",
-    };
+  constructor(public bot: Bot, public options: FullConfig = defaultConfig) {
+    super();
+    this.meleeAttackRate = new MaxDamageOffset(this.bot);
+    this.bot.on("physicsTick", this.update);
+    this.bot.on("physicsTick", this.checkForShield);
+    this.bot.on("entitySwingArm", this.swingUpdate);
+    this.bot.on("entityHurt", this.hurtUpdate);
+  }
 
-    public rotateConfig: RotateConfig = {
-        enabled: true,
-        mode: "constant",
-    };
-    public target?: Entity;
-    public lastTarget?: Entity;
-    public weaponOfChoice: string = "sword";
-    public updateForTargetShielding: boolean = true;
-
-    public currentStrafeDir?: ControlState;
-
-    constructor(public bot: Bot, private options: FullConfig) {
-        super();
-        this.meleeAttackRate = new MaxDamageOffset(this.bot);
-        this.bot.on("physicsTick", () => this.update());
-        this.bot.on("entityGone", (e) => {
-            if (e === this.target) this.stop();
-        });
-
-        this.bot.on("entitySwingArm", (entity: Entity) => {
-            if (entity === this.target) {
-                this.ticksSinceTargetAttack = 0;
-            }
-        });
-        this.bot._client.on("entity_metadata", this.checkForTargetShield.bind(this));
+  changeWeaponState(weapon: string): Item | null {
+    const hasWeapon = this.checkForWeapon(weapon);
+    if (hasWeapon) {
+      this.weaponOfChoice = weapon;
+      return hasWeapon;
     }
+    return null;
+  }
 
-    changeWeaponState(weapon: string): Item | null {
-        const hasWeapon = this.checkForWeapon(weapon);
-        if (hasWeapon) {
-            this.weaponOfChoice = weapon;
-            return hasWeapon;
-        }
-        return null;
+  checkForWeapon(weapon?: string): Item | null {
+    if (!weapon) weapon = this.weaponOfChoice;
+    const heldItem = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("hand")];
+    if (heldItem?.name.includes(weapon)) {
+      return heldItem;
+    } else {
+      const item = this.bot.util.inv.getAllItems().find((item) => item?.name.includes(weapon!));
+      return item ? item : null;
     }
+  }
 
-    checkForWeapon(weapon?: string): Item | null {
-        if (!weapon) weapon = this.weaponOfChoice;
-        const heldItem = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("hand")];
-        if (heldItem?.name.includes(weapon)) {
-            return heldItem;
-        } else {
-            const item = this.bot.util.inv.getAllItems().find((item) => item?.name.includes(weapon!));
-            if (item) {
-                return item;
-            }
-            return null;
-        }
-    }
+  async equipWeapon(weapon: Item): Promise<boolean> {
+    const heldItem = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("hand")];
+    return heldItem?.name === weapon.name ? true : await this.bot.util.inv.customEquip(weapon, "hand");
+  }
 
-    async equipWeapon(weapon: Item): Promise<boolean> {
-        const heldItem = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("hand")];
-        if (heldItem?.name === weapon.name) {
-            return false;
-        } else {
-            return await this.bot.util.inv.customEquip(weapon, "hand");
-            // await this.bot.util.builtInsPriority({group: "inventory", priority: 1, returnIfRunning: false}, this.bot.equip, weapon, "hand");
-        }
-    }
+  entityWeapon(entity?: Entity): Item {
+    return (entity ?? this.bot.entity)?.heldItem;
+  }
 
-    getWeaponOfEntity(entity?: Entity): Item {
-        return (entity ?? this.bot.entity)?.heldItem;
-    }
+  entityShieldStatus(entity?: Entity): boolean {
+    entity = entity ?? this.bot.entity;
+    const shieldSlot = entity.equipment[1];
+    return shieldSlot?.name === "shield" && this.bot.util.entity.isOffHandActive(entity);
+  }
 
-    getShieldStatusOfEntity(entity?: Entity): boolean {
-        entity = entity ?? this.bot.entity;
-        const shieldSlot = entity.equipment[1];
-        return shieldSlot?.name === "shield" && this.bot.util.entity.isOffHandActive(entity);
-    }
-
-    async checkForTargetShield(packet: any) {
-        if (!this.updateForTargetShielding) return;
-        if (!packet.entityId || !packet.metadata || packet.metadata.length === 0) return;
-        if (!packet.metadata[0].key || packet.metadata[0].key !== 8) return;
-        const entity = this.bot.entities[packet.entityId];
-        if (!entity || entity !== (!!this.target ? this.target : this.lastTarget)) return;
-        if (entity.equipment[1]?.name !== "shield") return;
-        const boolState = packet.metadata[0].value === 3; //is offhand active
-        const state = boolState ? "_axe" : "sword";
-        if (!!this.target && this.ticksSinceTargetAttack >= 3 && this.ticksSinceLastSwitch >= 3) {
-            const itemToChangeTo = await this.checkForWeapon(state);
-            if (itemToChangeTo) {
-                // await sleep(this.timeToNextAttack + 100)
-                // await this.attemptAttack();
-                const switched = await this.equipWeapon(itemToChangeTo);
-                this.weaponOfChoice = state;
-                if (switched) this.timeToNextAttack = this.meleeAttackRate.getTicks(this.getWeaponOfEntity(this.bot.entity));
-            }
-        }
-
-        this.emit("targetBlockingUpdate", entity, boolState);
-    }
-
-    async attack(target: Entity) {
-        if (target?.id === this.target?.id) return;
-        this.stop();
-        this.target = target;
-        if (!this.target) return;
-        this.timeToNextAttack = 0;
-        const itemToChangeTo = await this.checkForWeapon();
+  checkForShield = async () => {
+    if (!this.target) return;
+    if (!this.options.shieldDisableConfig.enabled) return;
+    if ((this.target.metadata[8] as any) === 3 && this.target.equipment[1]?.name === "shield") {
+      if (!this.targetShielding) this.ticksSinceLastSwitch = 0;
+      this.targetShielding = true;
+      if (this.ticksSinceTargetAttack >= 3 && this.ticksSinceLastSwitch >= 3 && !this.tickOverride) {
+        const itemToChangeTo = await this.checkForWeapon("_axe");
         if (itemToChangeTo) {
-            const switched = await this.equipWeapon(itemToChangeTo);
+          const switched = await this.equipWeapon(itemToChangeTo);
+          if (switched) {
+            this.weaponOfChoice = "_axe";
+            this.tickOverride = true;
+            switch (this.options.shieldDisableConfig.mode) {
+              case "single":
+              case "double":
+                this.tickOverride = true;
+                await this.bot.waitForTicks(3);
+                await this.attemptAttack("disableshield");
+                if (this.options.shieldDisableConfig.mode === "single") break;
+                await this.bot.waitForTicks(3);
+                await this.attemptAttack("doubledisableshield");
+            }
+            this.tickOverride = false;
+          }
         }
-        this.emit("startedAttacking", this.target);
-    }
-
-    stop() {
-        if (!this.target) return;
-        this.lastTarget = this.target;
-        this.target = undefined;
-        this.emit("stoppedAttacking");
-    }
-
-    // per tick.
-    update() {
-        if (!this.target) return;
-
-        this.timeToNextAttack--;
-        this.ticksSinceTargetAttack++;
-        this.ticksSinceLastSwitch++;
-        this.checkRange();
-        this.rotate();
-        this.doStrafe();
-        this.causeCritical();
-        this.toggleShield();
-
-        if (this.timeToNextAttack === -1) {
-            // const health = this.bot.util.entity.getHealth(this.target);
-            this.sprintTap();
-            this.attemptAttack();
-            // this.logHealth(health);
+      }
+    } else {
+      if (this.targetShielding) this.ticksSinceLastSwitch = 0;
+      this.targetShielding = false;
+      if (this.weaponOfChoice === "sword" || this.tickOverride) return; //assume already attacking
+      const itemToChangeTo = await this.checkForWeapon("sword");
+      if (itemToChangeTo) {
+        const switched = await this.equipWeapon(itemToChangeTo);
+        if (switched) {
+          this.weaponOfChoice = "sword";
+          this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
         }
+      }
     }
+  };
 
-    trueDistance(): number {
-        if (!this.target) return 10000;
-        const { x, y, z } = this.bot.entity.position.offset(0, this.bot.entity.height, 0);
-        const aabb = AABBUtils.getEntityAABB(this.target);
-        let dx = Math.max(aabb.minX - x, 0, x - aabb.maxX);
-        let dy = Math.max(aabb.minY - y, 0, y - aabb.maxY);
-        let dz = Math.max(aabb.minZ - z, 0, z - aabb.maxZ);
-        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  swingUpdate = async (entity: Entity) => {
+    if (entity === this.target) {
+      this.ticksSinceTargetAttack = 0;
+      if (this.ticksSinceLastHurt < 2) this.ticksSinceLastTargetHit = 0;
     }
+  };
 
-    checkRange() {
-        if (!this.target) return;
-        // if (this.timeToNextAttack < 0) return;
-        const dist = this.target.position.distanceTo(this.bot.entity.position);
-        if (dist > this.viewDistance) return this.stop();
-        const inRange = this.trueDistance() <= this.attackRange;
-        if (!this.wasInRange && inRange && this.swingConfig.mode === "killaura") this.timeToNextAttack = 0;
-        this.wasInRange = inRange;
-    }
-
-    async logHealth(health: number) {
-        if (!this.target) return;
-        const newHealth: number = await new Promise((resolve, reject) => {
-            const listener = (packet: any) => {
-                const entityId = packet.entityId;
-                const entity = this.bot.entities[entityId];
-                if (entity !== this.target) return;
-                if ((packet.metadata as any[]).find((md) => md.key === 7) === -1) return;
-                resolve(this.bot.util.entity.getHealthChange(packet.metadata, entity));
-            };
-            this.bot._client.removeListener("entity_metadata", listener);
-            setTimeout(() => {
-                this.bot._client.removeListener("entity_metadata", listener);
-                resolve(0);
-            }, 500);
-
-            this.bot._client.prependListener("entity_metadata", listener);
-        });
-
-        health = Math.round((health + newHealth) * 100) / 100;
-        if (!isNaN(health)) console.log(`Dealt ${newHealth} damage. Target ${this.target?.username} has ${health} health left.`);
-    }
-
-    async causeCritical(): Promise<boolean> {
-        if (!this.critConfig.enabled || !this.target) return false;
-        switch (this.critConfig.mode) {
-            case "packet":
-                if (this.timeToNextAttack !== -1) return false;
-                if (!this.wasInRange) return false;
-                // this.bot._client.write("position", { ...this.bot.entity.position, onGround: true });
-                this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 0.1625, 0), onGround: false });
-                this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 4.0e-6, 0), onGround: false });
-                this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 1.1e-6, 0), onGround: false });
-                this.bot._client.write("position", { ...this.bot.entity.position, onGround: false });
-                this.bot.entity.onGround = false;
-                return true;
-            case "shorthop":
-                if (this.timeToNextAttack !== 1) return false;
-                if (!this.bot.entity.onGround) return false;
-                if (this.trueDistance() > this.attackRange + 1) return false;
-                this.bot.entity.position = this.bot.entity.position.offset(0, 0.25, 0);
-
-                this.bot.entity.onGround = false;
-                await this.bot.waitForTicks(2);
-                const { x: dx, y: dy, z: dz } = this.bot.entity.position;
-                this.bot.entity.position = this.bot.entity.position.set(dx, Math.floor(dy), dz);
-                return true;
-            case "hop":
-                if (this.timeToNextAttack > 8) return false;
-                if (this.timeToNextAttack === 8) {
-                    if (!this.bot.entity.onGround) return false;
-                    if (this.trueDistance() > this.attackRange + 1) return false;
-                    this.bot.setControlState("jump", true);
-                    this.bot.setControlState("jump", false);
-                    if (!this.wasInRange) {
-                        this.bot.setControlState("forward", true);
-                    }
-                } else {
-                    if (!this.wasInRange) {
-                        this.bot.setControlState("forward", true);
-                    }
+  hurtUpdate = async (entity: Entity) => {
+    if (!this.target) return;
+    if (entity === this.bot.entity) {
+      this.ticksSinceLastHurt = 0;
+      if (this.options.onHitConfig.kbCancel.enabled) {
+        switch (this.options.onHitConfig.kbCancel.mode) {
+          case "velocity":
+            await new Promise((resolve, reject) => {
+              const listener = (packet: any) => {
+                const entity = this.bot.entities[packet.entityId];
+                if (entity === this.bot.entity) {
+                  if (this.options.onHitConfig.kbCancel.mode !== "velocity") return;
+                  if (this.options.onHitConfig.kbCancel.hRatio || this.options.onHitConfig.kbCancel.hRatio === 0) {
+                    this.bot.entity.velocity.x *= this.options.onHitConfig.kbCancel.hRatio;
+                    this.bot.entity.velocity.z *= this.options.onHitConfig.kbCancel.hRatio;
+                  }
+                  if (this.options.onHitConfig.kbCancel.yRatio || this.options.onHitConfig.kbCancel.yRatio === 0)
+                    this.bot.entity.velocity.y *= this.options.onHitConfig.kbCancel.yRatio;
+                  this.bot._client.removeListener("entity_velocity", listener);
+                  resolve(undefined);
                 }
-                return true;
-            default:
-                return false;
+              };
+
+              setTimeout(() => {
+                this.bot._client.removeListener("entity_velocity", listener);
+                resolve(undefined);
+              }, 500);
+              this.bot._client.on("entity_velocity", listener);
+            });
+            return;
+
+          case "jump":
+          case "jumpshift":
+            if (lookingAt(entity, this.bot.entity, this.options.genericConfig.enemyReach)) {
+              this.bot.setControlState("right", false);
+              this.bot.setControlState("left", false);
+              this.bot.setControlState("back", false);
+              this.bot.setControlState("sneak", false);
+              this.bot.setControlState("forward", true);
+              this.bot.setControlState("sprint", true);
+              this.bot.setControlState("jump", true);
+              this.bot.setControlState("jump", false);
+            }
+
+            if (this.options.onHitConfig.kbCancel.mode === "jump") break;
+          case "shift":
+            if (lookingAt(entity, this.target, this.options.genericConfig.enemyReach)) {
+              this.bot.setControlState("sneak", true);
+              await this.bot.waitForTicks(this.options.onHitConfig.kbCancel.delay || 5);
+              this.bot.setControlState("sneak", false);
+              this.bot.setControlState("sprint", true);
+            }
+
+            break;
         }
+      }
+      const before = performance.now();
+      // console.log("before:", this.bot.entity.velocity)
+      await new Promise((res, rej) => {
+        const listener = (packet: any) => {
+          const entity = this.bot.entities[packet.entityId];
+          if (entity !== this.bot.entity) return;
+          const notchVel = new Vec3(packet.velocityX, packet.velocityY, packet.velocityZ);
+          this.bot._client.removeListener("entity_velocity", listener);
+          res(undefined);
+        };
+        this.bot._client.on("entity_velocity", listener);
+      });
+      // console.log("after:", this.bot.entity.velocity,  performance.now() - before)
+      if (this.options.swingConfig.mode === "fullswing") this.reactionaryCrit();
     }
+  };
 
-    async doStrafe() {
-        if (!this.target) return false;
-        if (!this.shouldStrafe) return false;
-        const test = getTargetYaw(this.target.position, this.bot.entity.position);
-        const diff = test - this.target.yaw;
+  async attack(target: Entity) {
+    if (target?.id === this.target?.id) return;
+    this.stop();
+    this.target = target;
+    if (!this.target) return;
+    this.timeToNextAttack = 0;
+    const itemToChangeTo = await this.checkForWeapon();
+    if (itemToChangeTo) await this.equipWeapon(itemToChangeTo);
+    this.bot.tracker.trackEntity(target);
+    this.bot.tracker.trackEntity(this.bot.entity);
+    this.emit("startedAttacking", this.target);
+  }
 
-        // const staringDirection = deltaYaw(this.bot.entity.yaw, this.target.yaw) > 0 ? "right" : "left"
-        const staringDirection = diff < 0 ? "right" : "left";
-        const shouldMove = Math.abs(diff) < PIOver3;
-        if (staringDirection !== this.currentStrafeDir) {
-            if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
-        }
-        if (shouldMove) {
-            this.currentStrafeDir = staringDirection;
-            this.bot.setControlState(staringDirection, true);
-        } else {
-            this.bot.setControlState(staringDirection, false);
-            this.currentStrafeDir = undefined;
-        }
+  stop() {
+    if (!this.target) return;
+    this.lastTarget = this.target;
+    this.bot.tracker.stopTrackingEntity(this.target);
+    this.target = undefined;
+    stopFollow(this.bot, this.options.followConfig.mode);
+    this.bot.clearControlStates();
+    this.emit("stoppedAttacking");
+  }
+
+  // per tick.
+  update = () => {
+    if (!this.target) return;
+    this.timeToNextAttack--;
+    this.ticksSinceTargetAttack++;
+    this.ticksSinceLastHurt++;
+    this.ticksSinceLastTargetHit++;
+    this.ticksSinceLastSwitch++;
+    this.checkRange();
+    this.rotate();
+    this.doMove();
+    this.doStrafe();
+    this.causeCritical();
+    this.toggleShield();
+
+    if (this.timeToNextAttack <= -1 && !this.tickOverride) {
+      if (this.bot.entity.velocity.y <= -0.25) this.bot.setControlState("sprint", false);
+      this.attemptAttack("normal");
+      if (this.bot.entity.onGround) this.sprintTap();
+
     }
+  };
 
-    async sprintTap() {
-        if (!this.bot.entity.onGround) return false;
+  botReach(): number {
+    if (!this.target) return 10000;
+
+    // const eyeToFoot = this.bot.entity.position.offset(0, this.bot.entity.height, 0).distanceTo(this.target.position)
+    // const footToEye = this.bot.entity.position.distanceTo(this.target.position.offset(0, this.target.height, 0))
+    // const footToFoot = this.bot.entity.position.distanceTo(this.target.position);
+
+    // return Math.min(eyeToFoot, footToEye, footToFoot);
+
+    const eye = getEntityAABB(this.target).distanceToVec(this.bot.entity.position.offset(0, this.bot.entity.height, 0));
+    const foot = getEntityAABB(this.target).distanceToVec(this.bot.entity.position);
+    return Math.min(eye, foot);
+  }
+
+  targetReach(): number {
+    if (!this.target) return 10000;
+    const eye = getEntityAABB(this.bot.entity).distanceToVec(this.target.position.offset(0, this.target.height, 0));
+    const foot = getEntityAABB(this.bot.entity).distanceToVec(this.target.position);
+    return Math.min(eye, foot);
+  }
+
+  checkRange() {
+    if (!this.target) return;
+    const dist = this.target.position.distanceTo(this.bot.entity.position);
+    if (dist > this.options.genericConfig.viewDistance) return this.stop();
+    const inRange = this.botReach() <= this.options.genericConfig.attackRange;
+    if (!this.wasInRange && inRange && this.options.swingConfig.mode === "killaura") this.timeToNextAttack = -1;
+    this.wasInRange = inRange;
+  }
+
+  async causeCritical(): Promise<boolean> {
+    if (!this.options.critConfig.enabled || !this.target) return false;
+    if ((this.bot.entity as any).isInWater || (this.bot.entity as any).isInLava) return false;
+    switch (this.options.critConfig.mode) {
+      case "packet":
+        if (this.timeToNextAttack !== -1) return false;
         if (!this.wasInRange) return false;
-        this.bot.setControlState("sprint", false);
-        this.bot.setControlState("sprint", true);
-    }
-
-    async toggleShield() {
-        if (this.timeToNextAttack !== 1 || !this.target || !this.wasInRange) return false;
-        const shield = this.hasShield();
-        const wasShieldActive = shield; //&& this.bot.util.entity.isOffHandActive()
-        if (wasShieldActive && this.shieldConfig.enabled && this.shieldConfig.mode === "legit") {
-            this.bot.deactivateItem();
-        }
-
-        this.once("attackedTarget", async (entity) => {
-            await this.bot.waitForTicks(2);
-            if (wasShieldActive && this.shieldConfig.enabled && this.shieldConfig.mode === "legit") {
-                this.bot.activateItem(true);
-            } else if (!this.bot.util.entity.isOffHandActive() && shield && this.shieldConfig.mode === "blatant") {
-                this.bot.activateItem(true);
-            }
-        });
-        // await once(this.bot, "attackedTarget");
-    }
-
-    rotate() {
-        if (!this.rotateConfig.enabled || !this.target) return false;
-        const pos = this.target.position.offset(0, this.target.height, 0);
-        if (this.rotateConfig.mode === "constant") {
-            // this.bot.lookAt(pos, true);
-            if (this.wasInRange) this.bot.util.move.forceLookAt(pos, undefined, true);
-            return;
+        if (!this.bot.entity.onGround) return false;
+        if (this.options.critConfig.bypass) {
+          this.bot.setControlState("sprint", false);
+          this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 0.11, 0), onGround: false });
+          this.bot._client.write("position", {
+            ...this.bot.entity.position.offset(0, 0.1100013579, 0),
+            onGround: false,
+          });
+          this.bot._client.write("position", {
+            ...this.bot.entity.position.offset(0, 0.0000013579, 0),
+            onGround: false,
+          });
         } else {
-            if (this.timeToNextAttack !== -1) return;
-            switch (this.rotateConfig.mode) {
-                case "legit":
-                    this.bot.lookAt(pos);
-                    break;
-                case "instant":
-                    this.bot.lookAt(pos, true);
-                    break;
-                case "silent":
-                    this.bot.util.move.forceLookAt(pos);
-                    break;
-                case "ignore":
-                    break;
-                default:
-                    break;
-            }
-        }
-    }
-
-    async attemptAttack() {
-        if (!this.target) return;
-        if (!this.wasInRange) {
-            this.timeToNextAttack = 1; //this.meleeAttackRate.getTicks(this.bot.heldItem!);
-            return;
+          this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 0.1625, 0), onGround: false });
+          this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 4.0e-6, 0), onGround: false });
+          this.bot._client.write("position", { ...this.bot.entity.position.offset(0, 1.1e-6, 0), onGround: false });
+          this.bot._client.write("position", { ...this.bot.entity.position, onGround: false });
         }
 
-        attack(this.bot, this.target);
+        return true;
+      case "shorthop":
+        if (this.timeToNextAttack !== 1) return false;
+        if (!this.bot.entity.onGround) return false;
+        if (this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange))
+          return false;
+        this.bot.entity.position = this.bot.entity.position.offset(0, 0.25, 0);
 
-        this.emit("attackedTarget", this.target);
+        this.bot.entity.onGround = false;
+        await this.bot.waitForTicks(2);
+        const { x: dx, y: dy, z: dz } = this.bot.entity.position;
+        this.bot.entity.position = this.bot.entity.position.set(dx, Math.floor(dy), dz);
+        return true;
+      case "hop":
+        if (this.timeToNextAttack > 8) return false;
+        const inReach =
+          this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange);
+        if (!inReach) return false;
+        if (this.timeToNextAttack !== 8 && !this.willBeFirstHit) {
+          return false;
+        }
+        if (this.willBeFirstHit && !this.bot.entity.onGround) {
+          // if (!this.bot.entity.onGround) {
+          this.reactionaryCrit(true);
+          return true;
+          // }
+        }
 
-        this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
+        // console.log(this.botReach(), this.options.critConfig.attemptRange, (this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange)));
+
+        // const roughGroundCheck = this.target.position.y.toFixed(5).split(".")[1].charAt(4) === "0";
+        // if (roughGroundCheck) return false;
+        this.bot.setControlState("jump", true);
+        this.bot.setControlState("jump", false);
+        // console.log("jump!")
+
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  async doMove() {
+    if (!this.target) {
+      this.bot.clearControlStates();
+      return;
+    }
+    const farAway = this.botReach() >= this.options.genericConfig.attackRange;
+    if (farAway) {
+      this.targetGoal = followEntity(this.bot, this.target, this.options);
+    } else {
+      if (this.targetGoal) {
+        stopFollow(this.bot, this.options.followConfig.mode);
+        this.targetGoal = undefined;
+      }
+
+      let shouldApproach = true;
+      if (this.options.onHitConfig.enabled) {
+        const distCheck = this.targetReach() <= this.options.genericConfig.enemyReach + 1;
+        switch (this.options.onHitConfig.mode) {
+          case "backoff":
+            shouldApproach = this.ticksSinceLastHurt > (this.options.onHitConfig.tickCount ?? 5) && distCheck;
+            break;
+        }
+      }
+      shouldApproach = shouldApproach && this.botReach() > this.options.genericConfig.tooCloseRange;
+
+      if (!this.bot.getControlState("back")) {
+        this.bot.setControlState("forward", shouldApproach);
+        this.bot.setControlState("sprint", shouldApproach);
+      }
+    }
+  }
+
+  async doStrafe() {
+    if (!this.target) {
+      if (this.currentStrafeDir) {
+        this.bot.setControlState(this.currentStrafeDir, false);
+        this.currentStrafeDir = undefined;
+      }
+
+      return false;
+    }
+    if (!this.options.strafeConfig.enabled) return false;
+    const diff = getTargetYaw(this.target.position, this.bot.entity.position) - this.target.yaw;
+    const shouldMove = Math.abs(diff) < (this.options.strafeConfig.mode.maxOffset ?? PIOver3);
+    if (!shouldMove) {
+      if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
+      this.currentStrafeDir = undefined;
+      return;
+    }
+    switch (this.options.strafeConfig.mode.mode) {
+      case "circle":
+        const circleDir = diff < 0 ? "right" : "left";
+        if (circleDir !== this.currentStrafeDir) {
+          if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
+        }
+
+        this.currentStrafeDir = circleDir;
+        this.bot.setControlState(circleDir, true);
+
+        break;
+      case "random":
+        if (this.strafeCounter < 0) {
+          this.strafeCounter = Math.floor(Math.random() * 20) + 5;
+          const rand = Math.random();
+          const randomDir = rand < 0.5 ? "left" : "right";
+          const oppositeDir = rand >= 0.5 ? "left" : "right";
+
+          if (this.botReach() <= this.options.genericConfig.attackRange + 3) {
+            this.bot.setControlState(randomDir, true);
+            this.bot.setControlState(oppositeDir, false);
+            this.currentStrafeDir = randomDir;
+          }
+        }
+        this.strafeCounter--;
+        break;
+      case "intelligent":
+        if (this.ticksSinceLastTargetHit > 40) {
+          this.bot.setControlState("left", false);
+          this.bot.setControlState("right", false);
+          this.currentStrafeDir = undefined;
+        } else if (this.strafeCounter < 0) {
+          this.strafeCounter = Math.floor(Math.random() * 20) + 5;
+          const intelliRand = Math.random();
+          const smartDir = intelliRand < 0.5 ? "left" : "right";
+          const oppositeSmartDir = intelliRand >= 0.5 ? "left" : "right";
+          if (this.botReach() <= this.options.genericConfig.attackRange + 3) {
+            this.bot.setControlState(smartDir, true);
+            this.bot.setControlState(oppositeSmartDir, false);
+            this.currentStrafeDir = smartDir;
+          } else {
+            if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
+            this.currentStrafeDir = undefined;
+          }
+        }
+        this.strafeCounter--;
+    }
+  }
+
+  async sprintTap() {
+    if (!this.target) return;
+    if (!this.bot.entity.onGround) return false;
+    if (!this.wasInRange) return false;
+    if (!this.options.tapConfig.enabled) return false;
+    switch (this.options.tapConfig.mode) {
+      case "wtap":
+        this.bot.setControlState("forward", false);
+        this.bot.setControlState("sprint", false);
+        this.bot.setControlState("forward", true);
+        this.bot.setControlState("sprint", true);
+        break;
+      case "stap":
+        // if (this.bot.getControlState("back")) {
+        // this.bot.setControlState("forward", true);
+        // this.bot.setControlState("sprint", true);
+        // this.bot.setControlState("back", false);
+        // }
+        do {
+          this.bot.setControlState("forward", false);
+          this.bot.setControlState("sprint", false);
+          this.bot.setControlState("back", true);
+          const looking = movingAt(
+            this.target.position,
+            this.bot.entity.position,
+            // this.options.genericConfig.enemyReach
+            this.bot.tracker.getEntitySpeed(this.target) ?? new Vec3(0, 0, 0),
+            PIOver3
+          );
+          if (!looking && this.wasInRange) break;
+          await this.bot.waitForTicks(1);
+        } while (this.botReach() < this.options.genericConfig.attackRange + 0.1);
+        this.bot.setControlState("back", false);
+        this.bot.setControlState("forward", true);
+        this.bot.setControlState("sprint", true);
+        break;
+      default:
+        break;
+    }
+  }
+
+  async toggleShield() {
+    if (this.timeToNextAttack !== 0 || !this.target || !this.wasInRange) return false;
+    const shield = this.shieldEquipped();
+    const wasShieldActive = shield;
+    if (wasShieldActive && this.options.shieldConfig.enabled && this.options.shieldConfig.mode === "legit") {
+      this.bot.deactivateItem();
     }
 
-    hasShield() {
-        if (this.bot.supportFeature("doesntHaveOffHandSlot")) return false;
-        const slot = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("off-hand")];
-        if (!slot) return false;
-        return slot.name.includes("shield");
-    }
-}
+    this.once("attackedTarget", async (entity) => {
+      await this.bot.waitForTicks(5);
+      if (wasShieldActive && this.options.shieldConfig.enabled && this.options.shieldConfig.mode === "legit") {
+        this.bot.activateItem(true);
+      } else if (!this.bot.util.entity.isOffHandActive() && shield && this.options.shieldConfig.mode === "blatant") {
+        this.bot.activateItem(true);
+      }
+    });
+    // await once(this.bot, "attackedTarget");
+  }
 
-export class Cooldown {
-    weaponName: string;
-    x: number;
-    min: number;
-    max: number;
-    constructor(weaponName: string, x: number, min: number, max: number) {
-        this.weaponName = weaponName;
-        this.x = x;
-        this.min = min;
-        this.max = max;
+  rotate() {
+    if (!this.options.rotateConfig.enabled || !this.target) return false;
+    const pos = this.target.position.offset(0, this.target.height, 0);
+    if (this.options.rotateConfig.mode === "constant") {
+      this.bot.lookAt(pos);
+      return;
+    } else {
+      if (this.timeToNextAttack !== -1) return;
+      switch (this.options.rotateConfig.mode) {
+        case "legit":
+          this.bot.lookAt(pos);
+          break;
+        case "instant":
+          this.bot.lookAt(pos, true);
+          break;
+        case "silent":
+          this.bot.util.move.forceLookAt(pos);
+          break;
+        case "ignore":
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  async reactionaryCrit(noTickLimit = false) {
+    if (!this.options.critConfig.reaction.enabled) return;
+    if (!this.target) return;
+    if (this.tickOverride) return;
+    this.tickOverride = true;
+    let i = 0;
+    for (; i < 12; i++) {
+      await this.bot.waitForTicks(1);
+
+      if (this.bot.entity.onGround) {
+        this.tickOverride = false;
+        return;
+      }
+
+
+      if (this.options.critConfig.reaction.maxWaitDistance) {
+        if (this.botReach() >= this.options.critConfig.reaction.maxWaitDistance) {
+          this.tickOverride = false;
+          return;
+        }
+      }
+  
+
+
+
+      if (this.bot.entity.velocity.y <= -0.25 && this.timeToNextAttack <= (-1 + (this.options.critConfig.reaction.maxPreemptiveTicks ?? 0))) {
+          break
+      } 
+
+      if (this.options.critConfig.reaction.maxWaitTicks && !noTickLimit) {
+        if (this.timeToNextAttack <= (-1 - this.options.critConfig.reaction.maxWaitTicks)) {
+          break;
+        }
+      }
+
+
+    }
+    this.bot.setControlState("sprint", false);
+    await this.attemptAttack("reaction");
+    this.tickOverride = false;
+  }
+
+  async attemptAttack(reason: string) {
+    // console.log("called attack:", reason, this.wasInRange, this.bot.getControlState("sprint"), this.bot.entity.velocity.y);
+    if (!this.target) return;
+    if (!this.wasInRange) {
+      this.willBeFirstHit = true;
+      return;
+    }
+    if (Math.random() < this.options.genericConfig.missChancePerTick) {
+      // this.timeToNextAttack = 0;
+      await this.bot.waitForTicks(1);
+      await this.attemptAttack(reason);
+      return;
     }
 
-    getAttackSpeed(weaponName: string) {
-        if (!weaponName) return attackSpeeds.other;
-        // @ts-expect-error
-        return attackSpeeds[weaponName] || attackSpeeds.other;
-    }
+    attack(this.bot, this.target);
+    this.willBeFirstHit = false;
 
-    clamp(x: number, min: number, max: number) {
-        if (x < min) return min;
-        if (x > max) return max;
-        return x;
-    }
-    getCooldown(weaponName: string) {
-        const speed = this.getAttackSpeed(weaponName);
-        return Math.floor((1 / speed) * 20);
-    }
+    this.emit("attackedTarget", this.target, reason, this.timeToNextAttack);
+    this.timeToNextAttack = this.meleeAttackRate.getTicks(this.bot.heldItem!);
+  }
 
-    getDamageMultiplier(weaponName: string) {
-        const speed = this.getAttackSpeed(weaponName);
-        const damageMul = 0.2 + Math.pow((speed + 0.5) / ((1 / speed) * 20), 2) * 0.8;
-        return this.clamp(damageMul, 0.2, 1.0);
-    }
-}
-
-export class MaxDamageOffset {
-    min: number;
-    max: number;
-    bot: Bot;
-    constructor(bot: Bot, min = 0, max = 0) {
-        this.bot = bot;
-        this.min = min;
-        this.max = max;
-    }
-
-    getTicks(item: Item) {
-        const heldItem = item;
-        const cooldown = Cooldown.prototype.getCooldown(!!heldItem ? heldItem.name : "other");
-        const ticks = Math.floor(Math.random() * (this.max - this.min) + this.min) + cooldown;
-        return Math.max(1, ticks);
-    }
+  shieldEquipped() {
+    if (this.bot.supportFeature("doesntHaveOffHandSlot")) return false;
+    const slot = this.bot.inventory.slots[this.bot.getEquipmentDestSlot("off-hand")];
+    if (!slot) return false;
+    return slot.name.includes("shield");
+  }
 }

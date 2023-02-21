@@ -7,10 +7,10 @@ import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
 
 import { BowPVP } from "./bow/bowpvp";
-import { SwordPvpTwo } from "./sword/swordpvpTwo";
+
 declare module "mineflayer" {
     interface Bot {
-        swordpvp: SwordPvpTwo;
+        swordpvp: SwordPvp;
         bowpvp: BowPVP;
     }
     interface BotEvents {
@@ -25,7 +25,7 @@ export default function plugin(bot: Bot) {
     if (!bot.util) bot.loadPlugin(utilPlugin);
     if (!bot.tracker || !bot.projectiles) bot.loadPlugin(trackerPlugin)
     if (!bot.jumpPather) bot.loadPlugin(jumpPathing)
-    bot.swordpvp = new SwordPvpTwo(bot);
+    bot.swordpvp = new SwordPvp(bot);
     bot.bowpvp = new BowPVP(bot);
 }
 
