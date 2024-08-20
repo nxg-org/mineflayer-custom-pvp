@@ -148,8 +148,6 @@ export class SwordPvp extends EventEmitter {
   };
 
   swingUpdate = async (entity: Entity) => {
-    console.log('hey1', entity === this.target, entity.name, this.target?.name, this.ticksSinceLastHurt, this.ticksSinceLastTargetHit)
-
     if (entity === this.target) {
       this.ticksSinceTargetAttack = 0;
     }
@@ -171,7 +169,7 @@ export class SwordPvp extends EventEmitter {
       this.ticksSinceLastHurt = 0;
 
       if (this.ticksSinceTargetAttack < 6) this.ticksSinceLastTargetHit = 0;
-      console.log('hey', entity === this.target, entity.name, this.target?.name, this.ticksSinceLastHurt, this.ticksSinceLastTargetHit, this.ticksSinceTargetAttack)
+      // console.log('hey', entity === this.target, entity.name, this.target?.name, this.ticksSinceLastHurt, this.ticksSinceLastTargetHit, this.ticksSinceTargetAttack)
 
 
       if (this.options.onHitConfig.kbCancel.enabled) {
@@ -185,6 +183,7 @@ export class SwordPvp extends EventEmitter {
                   if (this.options.onHitConfig.kbCancel.hRatio || this.options.onHitConfig.kbCancel.hRatio === 0) {
                     this.bot.entity.velocity.x *= this.options.onHitConfig.kbCancel.hRatio;
                     this.bot.entity.velocity.z *= this.options.onHitConfig.kbCancel.hRatio;
+                   
                   }
                   if (this.options.onHitConfig.kbCancel.yRatio || this.options.onHitConfig.kbCancel.yRatio === 0)
                     this.bot.entity.velocity.y *= this.options.onHitConfig.kbCancel.yRatio;
@@ -394,7 +393,9 @@ export class SwordPvp extends EventEmitter {
             break;
         }
       }
-      shouldApproach = shouldApproach && this.botReach() > this.options.genericConfig.tooCloseRange;
+      
+      const tooClose = this.botReach() > this.options.genericConfig.tooCloseRange
+      shouldApproach = shouldApproach && tooClose;
 
       if (!this.bot.getControlState("back")) {
         this.bot.setControlState("forward", shouldApproach);
