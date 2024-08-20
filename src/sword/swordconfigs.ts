@@ -15,7 +15,7 @@ export const defaultConfig: FullConfig = {
   genericConfig: {
     viewDistance: 128,
     attackRange: 3,
-    tooCloseRange: 1,
+    tooCloseRange: 2,
     missChancePerTick: 0.0,
     enemyReach: 3,
   },
@@ -34,7 +34,7 @@ export const defaultConfig: FullConfig = {
   critConfig: {
     enabled: true,
     mode: "hop",
-    attemptRange: 5,
+    attemptRange: 2.5,
     reaction: {
       enabled: true,
       maxPreemptiveTicks: 1,
@@ -43,11 +43,11 @@ export const defaultConfig: FullConfig = {
     },
   },
   onHitConfig: {
-    enabled: false,
+    enabled: true,
     mode: "backoff",
     kbCancel: {
       enabled: true,
-      mode: "jump",
+      mode: "jump", 
     },
   },
   rotateConfig: {
@@ -68,7 +68,7 @@ export const defaultConfig: FullConfig = {
   followConfig: {
     mode: "standard",
     distance: 3,
-    predict: false
+    predict: true
   },
 };
 

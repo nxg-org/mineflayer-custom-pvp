@@ -21,20 +21,26 @@ class KillBot {
       username: "pvp-testing" + num,
       host: process.argv[2],
       port: Number(process.argv[3]) ?? 25565,
-      version: "1.18.2",
     });
-    this.bot.loadPlugin(customPVP);
-    this.bot.loadPlugin(pathfinder);
-    this.bot.jumpPather.searchDepth = 10;
 
-    const moves = new Movements(this.bot, this.bot.registry);
-    moves.allowFreeMotion = true;
-    moves.allowParkour = true;
-    moves.allowSprinting = true;
-    this.bot.pathfinder.setMovements(moves);
 
-    this.bot.physics.yawSpeed = 50;
+
+
+
+  
     this.bot.once("spawn", async () => {
+
+      this.bot.physics.yawSpeed = 50;
+      this.bot.loadPlugin(customPVP);
+      this.bot.loadPlugin(pathfinder);
+      // this.bot.jumpPather.searchDepth = 10;
+  
+      const moves = new Movements(this.bot);
+      moves.allowFreeMotion = true;
+      moves.allowParkour = true;
+      moves.allowSprinting = true;
+      this.bot.pathfinder.setMovements(moves);
+
       // this.bot.swordpvp.options.followConfig.mode = "jump"
       // this.bot.swordpvp.options.critConfig.mode = "packet";
       // this.bot.swordpvp.options.tapConfig.enabled = false
@@ -42,6 +48,14 @@ class KillBot {
       this.bot.setControlState("forward", true);
       await this.bot.waitForTicks(20);
       this.bot.setControlState("forward", false);
+
+      let time = performance.now();
+      this.bot.swordpvp.on("attackedTarget", (target, reason, ticks) => {
+        const now = performance.now();
+        console.log("attacking", now - time, reason, ticks, this.bot.entity.velocity.y);
+        time = now;
+      });
+  
     });
 
     const checkedEntities: { [id: number]: Entity } = {};
@@ -92,13 +106,7 @@ class KillBot {
     });
 
     // rl.on("line", this.bot.chat)
-    let time = performance.now();
-    this.bot.swordpvp.on("attackedTarget", (target, reason, ticks) => {
-      const now = performance.now();
-      console.log("attacking", now - time, reason, ticks, this.bot.entity.velocity.y);
-      time = now;
-    });
-
+  
 
     this.bot.on("messagestr", (msg, position) => {
       const [prefix, message] = msg.split(':');
@@ -129,9 +137,13 @@ class KillBot {
     this.bot.swordpvp.attack(target);
   };
 
-  handler = async (username, message) => {
+  handler = async (username: string, message: string) => {
     const split = message.split(" ");
     switch (split[0]) {
+
+      case "settings": 
+      console.log(this.bot.swordpvp.options)
+      break;
       case "partyme":
         this.bot.chat("/party join " + username);
         break;

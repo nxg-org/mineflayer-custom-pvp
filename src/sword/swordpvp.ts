@@ -47,10 +47,27 @@ export class SwordPvp extends EventEmitter {
   constructor(public bot: Bot, public options: FullConfig = defaultConfig) {
     super();
     this.meleeAttackRate = new MaxDamageOffset(this.bot);
+
+    const oldEmit = this.bot.emit.bind(this.bot);
+    const oldEmit1 = this.bot._client.emit.bind(this.bot._client);
+
+    // this.bot.emit = ((event: any, ...args: any[]) => {
+    //   if (event.startsWith("entity")) console.log(event, args)
+    //   return oldEmit(event, ...args)
+    // })
+
+    // this.bot._client.emit = ((event: any, ...args: any[]) => {
+    //   if (!event.includes("chunk")) console.log(event, args)
+    //   return oldEmit1(event, ...args)
+    // })
+
     this.bot.on("physicsTick", this.update);
     this.bot.on("physicsTick", this.checkForShield);
     this.bot.on("entitySwingArm", this.swingUpdate);
-    this.bot.on("entityHurt", this.hurtUpdate);
+
+    this.bot.on('entityUpdate', this.hurtUpdate)
+    // this.bot.on("entityHurt", this.hurtUpdate);
+    // this.bot.on('health', this.hurtUpdate.bind(this, this.bot.entity))
   }
 
   changeWeaponState(weapon: string): Item | null {
@@ -131,20 +148,36 @@ export class SwordPvp extends EventEmitter {
   };
 
   swingUpdate = async (entity: Entity) => {
+    console.log('hey1', entity === this.target, entity.name, this.target?.name, this.ticksSinceLastHurt, this.ticksSinceLastTargetHit)
+
     if (entity === this.target) {
       this.ticksSinceTargetAttack = 0;
-      if (this.ticksSinceLastHurt < 2) this.ticksSinceLastTargetHit = 0;
     }
   };
+
+
+  private lastHealth = 20;
 
   hurtUpdate = async (entity: Entity) => {
     if (!this.target) return;
     if (entity === this.bot.entity) {
+  
+      if (this.lastHealth <= this.bot.health ?? 20) {
+        this.lastHealth = this.bot.health;
+        return;
+      } 
+
+      this.lastHealth = this.bot.health;
       this.ticksSinceLastHurt = 0;
+
+      if (this.ticksSinceTargetAttack < 6) this.ticksSinceLastTargetHit = 0;
+      console.log('hey', entity === this.target, entity.name, this.target?.name, this.ticksSinceLastHurt, this.ticksSinceLastTargetHit, this.ticksSinceTargetAttack)
+
+
       if (this.options.onHitConfig.kbCancel.enabled) {
         switch (this.options.onHitConfig.kbCancel.mode) {
           case "velocity":
-            await new Promise((resolve, reject) => {
+            await new Promise<void>((resolve, reject) => {
               const listener = (packet: any) => {
                 const entity = this.bot.entities[packet.entityId];
                 if (entity === this.bot.entity) {
@@ -156,13 +189,13 @@ export class SwordPvp extends EventEmitter {
                   if (this.options.onHitConfig.kbCancel.yRatio || this.options.onHitConfig.kbCancel.yRatio === 0)
                     this.bot.entity.velocity.y *= this.options.onHitConfig.kbCancel.yRatio;
                   this.bot._client.removeListener("entity_velocity", listener);
-                  resolve(undefined);
+                  resolve();
                 }
               };
 
               setTimeout(() => {
                 this.bot._client.removeListener("entity_velocity", listener);
-                resolve(undefined);
+                resolve();
               }, 500);
               this.bot._client.on("entity_velocity", listener);
             });
@@ -382,6 +415,7 @@ export class SwordPvp extends EventEmitter {
     if (!this.options.strafeConfig.enabled) return false;
     const diff = getTargetYaw(this.target.position, this.bot.entity.position) - this.target.yaw;
     const shouldMove = Math.abs(diff) < (this.options.strafeConfig.mode.maxOffset ?? PIOver3);
+    // console.log('shouldMove', shouldMove)
     if (!shouldMove) {
       if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
       this.currentStrafeDir = undefined;
@@ -414,24 +448,32 @@ export class SwordPvp extends EventEmitter {
         this.strafeCounter--;
         break;
       case "intelligent":
+        // console.log(this.ticksSinceLastTargetHit, this.currentStrafeDir, this.strafeCounter)
         if (this.ticksSinceLastTargetHit > 40) {
           this.bot.setControlState("left", false);
           this.bot.setControlState("right", false);
           this.currentStrafeDir = undefined;
-        } else if (this.strafeCounter < 0) {
-          this.strafeCounter = Math.floor(Math.random() * 20) + 5;
-          const intelliRand = Math.random();
-          const smartDir = intelliRand < 0.5 ? "left" : "right";
-          const oppositeSmartDir = intelliRand >= 0.5 ? "left" : "right";
-          if (this.botReach() <= this.options.genericConfig.attackRange + 3) {
-            this.bot.setControlState(smartDir, true);
-            this.bot.setControlState(oppositeSmartDir, false);
+        } else {
+          if (this.strafeCounter < 0 || this.currentStrafeDir === undefined) {
+            this.strafeCounter = Math.floor(Math.random() * 20) + 5;
+            const intelliRand = Math.random();
+            const smartDir = intelliRand < 0.5 ? "left" : "right";
+            const oppositeSmartDir = intelliRand >= 0.5 ? "left" : "right";
             this.currentStrafeDir = smartDir;
+          } 
+            
+          const oppositeSmartDir = this.currentStrafeDir === 'left' ? "right" : "left";
+          if (this.botReach() <= this.options.genericConfig.attackRange + 3) {
+            this.bot.setControlState(this.currentStrafeDir!, true);
+            this.bot.setControlState(oppositeSmartDir, false);
+            // console.log('set',this.currentStrafeDir, 'true', oppositeSmartDir, 'false')
+            // console.log(this.bot.getControlState('left'), this.bot.getControlState('right'), this.botReach(), this.options.genericConfig.attackRange + 3)
           } else {
             if (this.currentStrafeDir) this.bot.setControlState(this.currentStrafeDir, false);
             this.currentStrafeDir = undefined;
           }
         }
+        // console.log(this.bot.getControlState('left'), this.bot.getControlState('right'), this.botReach(), this.options.genericConfig.attackRange + 3)
         this.strafeCounter--;
     }
   }

@@ -3,7 +3,7 @@ import { goals } from "mineflayer-pathfinder";
 import { Bot } from "mineflayer";
 import { Vec3 } from "vec3";
 import { FollowConfig, FullConfig } from "./swordconfigs";
-import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
+// import { GoalFactory } from "@nxg-org/mineflayer-jump-pathing";
 
 class PredictiveGoal extends goals.GoalFollow {
   public readonly bot: Bot;
@@ -64,14 +64,14 @@ class PredictiveGoal extends goals.GoalFollow {
 export function followEntity(bot: Bot, entity: Entity, options: FullConfig) {
   switch (options.followConfig.mode) {
     case "jump":
-      const tmp1 = GoalFactory.predictEntity(
-        bot,
-        entity,
-        options.followConfig.distance,
-        options.followConfig.predict ? options.followConfig.predictTicks ?? 4 : 0
-      );
-      bot.jumpPather.goto(tmp1);
-      return tmp1;
+      // const tmp1 = GoalFactory.predictEntity(
+      //   bot,
+      //   entity,
+      //   options.followConfig.distance,
+      //   options.followConfig.predict ? options.followConfig.predictTicks ?? 4 : 0
+      // );
+      // bot.jumpPather.goto(tmp1);
+      // return tmp1;
     case "standard":
       const tmp2 = new PredictiveGoal(
         bot,
@@ -85,6 +85,6 @@ export function followEntity(bot: Bot, entity: Entity, options: FullConfig) {
 }
 
 export function stopFollow(bot: Bot, mode: FollowConfig["mode"]) {
-  bot.jumpPather.stop();
+  // bot.jumpPather.stop();
   bot.pathfinder.stop();
 }
