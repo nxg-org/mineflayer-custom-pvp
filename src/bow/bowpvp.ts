@@ -118,7 +118,7 @@ export class BowPVP {
 
     public async fireworkSetup(): Promise<boolean> {
         const weapon = this.bot.util.inv.getAllItems().find((item) => item.name.includes("crossbow"))
-        if (!this.hasAmmo() || !weapon) return false;
+        if (!this.hasAmmo("crossbow_firework") || !weapon) return false;
         this.useOffhand = false;
         // if (!this.bot.util.inv.getHandWithItem(true)?.name.includes("firework")) {
         const ammo = this.bot.util.inv.getAllItems().find(item => item.name.includes("firework"))!
@@ -144,7 +144,8 @@ export class BowPVP {
         this.bot.removeListener("physicsTick", this.chargeHandling);
         if (this.target) this.bot.tracker.stopTrackingEntity(this.target);
         if (this.shotCharging) {
-            if (this.shotInfo) this.bot.util.move.forceLook(this.shotInfo.yaw, this.shotInfo.pitch, true);
+            // if (this.shotInfo) this.bot.look(this.shotInfo.yaw, this.shotInfo.pitch, true);
+            if (this.shotInfo) this.bot.look(this.shotInfo.yaw, this.shotInfo.pitch, true);
             this.bot.deactivateItem();
         }
         this.target = null;
@@ -173,7 +174,7 @@ export class BowPVP {
         this.enabled = true;
         this.target = target;
         if (weapon === "crossbow_firework") {
-            const isSetup = this.fireworkSetup();
+            const isSetup = await this.fireworkSetup();
             if (!isSetup) return this.stop();
         }
         else {
@@ -215,7 +216,6 @@ export class BowPVP {
     private getShotInfo = async () => {
         if (!this.target) return
         this.shotInfo = this.shotToEntity(this.target, this.bot.tracker.getEntitySpeed(this.target) || new Vec3(0, 0, 0));
-        // console.log(this.shotInfo)
     };
 
     private chargeHandling = async () => {
@@ -252,7 +252,7 @@ export class BowPVP {
         }
 
         if (this.shotInfo && this.shotInfo.hit) {
-            this.bot.util.move.forceLook(this.shotInfo.yaw, this.shotInfo.pitch, true);
+            this.bot.look(this.shotInfo.yaw, this.shotInfo.pitch, true);
             if (this.shotReady) {
                 if (["bow", "trident"].includes(this.weapon)) {
                     this.bot.deactivateItem();

@@ -1,5 +1,5 @@
 const { createBot } = require("mineflayer");
-const customPVP = require("@nxg-org/mineflayer-custom-pvp");
+const {default: customPVP} = require("../lib");
 const { Movements, pathfinder } = require("mineflayer-pathfinder");
 
 let target = null;
@@ -27,18 +27,20 @@ bot.once("spawn", async () => {
 
 bot.on("chat", handleChat);
 
-async function equipShield() {
-  if (bot.util.inv.getHandWithItem(true)?.name === "shield") return;
-  const shield = bot.util.inv.getAllItemsExceptCurrent("off-hand").find((e) => e.name === "shield");
-  if (shield) {
-    await bot.util.inv.customEquip(shield, "off-hand");
+
+async function equipItem(item, offhand=false) {
+  const handPos =  offhand ? "off-hand" : "hand"
+  const itemToEquip = bot.util.inv.getAllItemsExceptCurrent(handPos).find((e) => e.name === item);
+  if (itemToEquip) {
+    await bot.util.inv.customEquip(itemToEquip,handPos);
   }
+
 }
 
 async function fight() {
   target = bot.nearestEntity((e) => e.type === "player" && !e.username?.includes("pvp-testing"));
   if (!target) return console.log("no target");
-  await equipShield();
+  await equipItem("shield", true);
   bot.swordpvp.attack(target);
 }
 
@@ -59,7 +61,7 @@ async function handleChat(username, message) {
     case "egg":
     case "crossbow_firework":
       bot.bowpvp.stop();
-      target = bot.nearestEntity((e) => (e.username || e.name) === args[1]);
+      target = bot.nearestEntity((e) => (e.username || e.name).startsWith(args[1]));
       if (!target) return;
       bot.bowpvp.attack(target, args[0]);
       break;

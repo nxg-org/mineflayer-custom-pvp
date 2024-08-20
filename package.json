@@ -24,11 +24,12 @@
   },
   "dependencies": {
     "@nxg-org/mineflayer-tracker": "^1.1.1",
-    "@nxg-org/mineflayer-trajectories": "^1.1.1",
+    "@nxg-org/mineflayer-trajectories": "^1.2.0",
     "@nxg-org/mineflayer-util-plugin": "^1.7.9",
     "mineflayer-pathfinder": "^2.4.5"
   },
   "devDependencies": {
+    "@nxg-org/mineflayer-custom-pvp": "file:./",
     "mineflayer": "^4.18.0",
     "typescript": "^4.5.2"
   }
