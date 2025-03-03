@@ -66,7 +66,8 @@ export class SwordPvp extends EventEmitter {
     this.bot.on("entitySwingArm", this.swingUpdate);
 
     this.bot.on('entityUpdate', this.hurtUpdate);
-    this.bot.on('entityDead', this.deathUpdate);
+    this.bot.on('entityDead', this.removalUpdate);
+    this.bot.on('entityGone', this.removalUpdate); // 1.8.8 compat.
     // this.bot.on("entityHurt", this.hurtUpdate);
     // this.bot.on('health', this.hurtUpdate.bind(this, this.bot.entity))
   }
@@ -157,7 +158,7 @@ export class SwordPvp extends EventEmitter {
 
   private lastHealth = 20;
 
-  deathUpdate = async (entity: Entity) => {
+  removalUpdate = async (entity: Entity) => {
     if (this.target == null) return;
     if (entity.id === this.target.id) {
       this.stop();
