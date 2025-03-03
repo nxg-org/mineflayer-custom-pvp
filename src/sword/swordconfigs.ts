@@ -15,13 +15,13 @@ export const defaultConfig: FullConfig = {
   genericConfig: {
     viewDistance: 128,
     attackRange: 3,
-    tooCloseRange: 2,
+    tooCloseRange: 2.5,
     missChancePerTick: 0.0,
     enemyReach: 3,
   },
   tapConfig: {
     enabled: true,
-    mode: "stap",
+    mode: "wtap",
     delay: 0,
   },
   strafeConfig: {
@@ -34,7 +34,7 @@ export const defaultConfig: FullConfig = {
   critConfig: {
     enabled: true,
     mode: "hop",
-    attemptRange: 2.5,
+    attemptRange: 2,
     reaction: {
       enabled: true,
       maxPreemptiveTicks: 1,

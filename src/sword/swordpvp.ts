@@ -65,7 +65,8 @@ export class SwordPvp extends EventEmitter {
     this.bot.on("physicsTick", this.checkForShield);
     this.bot.on("entitySwingArm", this.swingUpdate);
 
-    this.bot.on('entityUpdate', this.hurtUpdate)
+    this.bot.on('entityUpdate', this.hurtUpdate);
+    this.bot.on('entityDead', this.deathUpdate);
     // this.bot.on("entityHurt", this.hurtUpdate);
     // this.bot.on('health', this.hurtUpdate.bind(this, this.bot.entity))
   }
@@ -155,6 +156,13 @@ export class SwordPvp extends EventEmitter {
 
 
   private lastHealth = 20;
+
+  deathUpdate = async (entity: Entity) => {
+    if (this.target == null) return;
+    if (entity.id === this.target.id) {
+      this.stop();
+    }
+  }
 
   hurtUpdate = async (entity: Entity) => {
     if (!this.target) return;
@@ -497,6 +505,35 @@ export class SwordPvp extends EventEmitter {
         // this.bot.setControlState("sprint", true);
         // this.bot.setControlState("back", false);
         // }
+
+
+
+        // const listener = () => {
+        //   if (!this.target) return cleanup();
+        //   this.bot.setControlState("forward", false);
+        //   this.bot.setControlState("sprint", false);
+        //   this.bot.setControlState("back", true);
+        //   const looking = movingAt(
+        //     this.target.position,
+        //     this.bot.entity.position,
+        //     // this.options.genericConfig.enemyReach
+        //     this.bot.tracker.getEntitySpeed(this.target) ?? new Vec3(0, 0, 0),
+        //     PIOver3
+        //   );
+        //   if (!looking && this.wasInRange) cleanup();
+        //   if (this.botReach() < this.options.genericConfig.attackRange + 0.1) cleanup();
+
+        // }
+
+        // const cleanup = () => {
+        //   this.bot.off("physicsTick", listener);
+        //   this.bot.setControlState("back", false);
+        //   this.bot.setControlState("forward", true);
+        //   this.bot.setControlState("sprint", true);
+        // }
+
+        // this.bot.on("physicsTick", listener);
+
         do {
           this.bot.setControlState("forward", false);
           this.bot.setControlState("sprint", false);
@@ -511,9 +548,11 @@ export class SwordPvp extends EventEmitter {
           if (!looking && this.wasInRange) break;
           await this.bot.waitForTicks(1);
         } while (this.botReach() < this.options.genericConfig.attackRange + 0.1);
+
         this.bot.setControlState("back", false);
         this.bot.setControlState("forward", true);
         this.bot.setControlState("sprint", true);
+        
         break;
       default:
         break;
@@ -587,8 +626,6 @@ export class SwordPvp extends EventEmitter {
         }
       }
   
-
-
 
       if (this.bot.entity.velocity.y <= -0.25 && this.ticksToNextAttack <= (-1 + (this.options.critConfig.reaction.maxPreemptiveTicks ?? 0))) {
           break

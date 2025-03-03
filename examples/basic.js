@@ -5,10 +5,12 @@ const { Movements, pathfinder } = require("mineflayer-pathfinder");
 let target = null;
 
 const bot = createBot({
-  username: `pvp-testing`,
+  username: `pvp_testing`,
   host: process.argv[2],
   port: Number(process.argv[3]) || 25565,
+  version: process.argv[4],
 });
+
 
 bot.once("spawn", async () => {
   bot.physics.yawSpeed = 50;
@@ -22,9 +24,16 @@ bot.once("spawn", async () => {
   bot.pathfinder.setMovements(moves);
 
   bot.bowpvp.useOffhand = false;
+
+  await bot.waitForTicks(20);
+  bot.chat('/register rocky1928 rocky1928')
 });
 
 
+bot._client.on("end", console.log)
+bot._client.on("error", console.log)
+bot.on("kicked", console.log);
+bot.on("error", console.log);
 bot.on("chat", handleChat);
 
 
@@ -107,3 +116,4 @@ async function handleChat(username, message) {
       break;
   }
 }
+
