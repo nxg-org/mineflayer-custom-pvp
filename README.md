@@ -26,6 +26,9 @@ Both modules extend existing plugins (mineflayer-pvp and minecrafthawkeye) with 
 
 The SwordPvP module delivers accurate melee combat with features designed to match the effectiveness of modern PvP clients.
 
+For complete API documentation including all configuration options, methods, properties, and events, see the [SwordPvP API Docs](src/sword/API.md).
+
+
 ### Key Features
 
 - **MC-Accurate Hit Detection**
@@ -148,8 +151,6 @@ const swordPvp = new SwordPvp(bot, {
   }
 })
 ```
-
-For complete API documentation including all configuration options, methods, properties, and events, see the [SwordPvP API Documentation](src/swordpvp/API.md).
 
 ---
 
