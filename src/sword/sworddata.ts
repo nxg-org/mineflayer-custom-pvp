@@ -126,7 +126,7 @@ export class OldPVPTicks extends MaxDamageOffset {
         if (timeSinceLastAttack >= 1 && 
             (timeSinceLastAttack >= ticksBetweenAttacks || shouldClick)) {
             this.lastAttackTime = currentTime;
-            return 1; // Attack immediately
+            return 0; // Attack immediately
         }
         
         // Random small variance to avoid perfectly regular patterns

@@ -44,6 +44,8 @@ class KillBot {
       // this.bot.swordpvp.options.followConfig.mode = "jump"
       // this.bot.swordpvp.options.critConfig.mode = "packet";
       // this.bot.swordpvp.options.tapConfig.enabled = false
+      this.bot.swordpvp.options.cps = 20
+      this.bot.swordpvp.options.critConfig.reaction.enabled = false;
       this.bot.bowpvp.useOffhand = false;
       this.bot.setControlState("forward", true);
       await this.bot.waitForTicks(20);
@@ -123,6 +125,7 @@ class KillBot {
   }
 
   async equipShield() {
+    if (this.bot.supportFeature("doesntHaveOffHandSlot")) return;
     if (this.bot.util.inv.getHandWithItem(true)?.name === "shield") return;
     const shield = this.bot.util.inv.getAllItemsExceptCurrent("off-hand").find((e) => e.name === "shield");
     if (shield) {

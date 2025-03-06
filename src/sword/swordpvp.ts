@@ -14,7 +14,8 @@ import {
 import { attack } from "../util";
 import {
   defaultConfig,
-  FullConfig
+  FullConfig,
+  getConfig
 } from "./swordconfigs";
 import { MaxDamageOffset, NewPVPTicks, OldPVPTicks } from "./sworddata";
 import { followEntity, stopFollow } from "./swordutil";
@@ -44,9 +45,9 @@ export class SwordPvp extends EventEmitter {
   private strafeCounter: number = 0;
   private targetGoal?: any;
 
-  constructor(public bot: Bot, public options: FullConfig = defaultConfig) {
+  constructor(public bot: Bot, public options: FullConfig = getConfig(bot)) {
     super();
-    this.meleeAttackRate = bot.supportFeature("doesntHaveOffHandSlot") ? new NewPVPTicks(bot) : new OldPVPTicks(bot, options.cps ?? 15);
+    this.meleeAttackRate = bot.supportFeature("doesntHaveOffHandSlot") ?  new OldPVPTicks(bot, options.cps ?? 15) : new NewPVPTicks(bot);
 
     const oldEmit = this.bot.emit.bind(this.bot);
     const oldEmit1 = this.bot._client.emit.bind(this.bot._client);
@@ -293,8 +294,8 @@ export class SwordPvp extends EventEmitter {
 
     if (this.ticksToNextAttack <= -1 && !this.tickOverride) {
       if (this.bot.entity.velocity.y <= -0.25) this.bot.setControlState("sprint", false);
-      this.attemptAttack("normal");
       if (this.bot.entity.onGround) this.sprintTap();
+      this.attemptAttack("normal");
 
     }
   };
