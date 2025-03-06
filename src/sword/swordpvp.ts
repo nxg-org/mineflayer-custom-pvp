@@ -16,7 +16,7 @@ import {
   defaultConfig,
   FullConfig
 } from "./swordconfigs";
-import { MaxDamageOffset } from "./sworddata";
+import { MaxDamageOffset, NewPVPTicks, OldPVPTicks } from "./sworddata";
 import { followEntity, stopFollow } from "./swordutil";
 const { getEntityAABB } = AABBUtils;
 
@@ -46,7 +46,7 @@ export class SwordPvp extends EventEmitter {
 
   constructor(public bot: Bot, public options: FullConfig = defaultConfig) {
     super();
-    this.meleeAttackRate = new MaxDamageOffset(this.bot);
+    this.meleeAttackRate = bot.supportFeature("doesntHaveOffHandSlot") ? new NewPVPTicks(bot) : new OldPVPTicks(bot, options.cps ?? 15);
 
     const oldEmit = this.bot.emit.bind(this.bot);
     const oldEmit1 = this.bot._client.emit.bind(this.bot._client);
@@ -110,6 +110,8 @@ export class SwordPvp extends EventEmitter {
   checkForShield = async () => {
     if (!this.target) return;
     if (!this.options.shieldDisableConfig.enabled) return;
+    if (this.bot.supportFeature("doesntHaveOffHandSlot")) return; // no need for 1.8 pvp.
+
     if ((this.target.metadata[8] as any) === 3 && this.target.equipment[1]?.name === "shield") {
       if (!this.targetShielding) this.ticksSinceLastSwitch = 0;
       this.targetShielding = true;

@@ -9,6 +9,7 @@ export interface FullConfig {
   shieldDisableConfig: ShieldDisableConfig;
   rotateConfig: RotateConfig;
   followConfig: FollowConfig;
+  cps?: number; // version specific
 }
 
 export const defaultConfig: FullConfig = {
@@ -70,6 +71,7 @@ export const defaultConfig: FullConfig = {
     distance: 3,
     predict: true
   },
+  cps: 15
 };
 
 export type ShieldDisableConfig = {

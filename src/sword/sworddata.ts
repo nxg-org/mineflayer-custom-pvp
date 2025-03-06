@@ -74,20 +74,66 @@ export class Cooldown {
 
 
 
-export class MaxDamageOffset {
-    min: number;
-    max: number;
+export abstract class MaxDamageOffset {
+    minDmg: number;
+    maxDmg: number;
     bot: Bot;
     constructor(bot: Bot, min = 0, max = 0) {
         this.bot = bot;
-        this.min = min;
-        this.max = max;
+        this.minDmg = min;
+        this.maxDmg = max;
     }
 
-    getTicks(item: Item) {
+    abstract getTicks(item: Item): number;
+}
+
+
+
+export class NewPVPTicks extends MaxDamageOffset {
+    override getTicks(item: Item) {
         const heldItem = item;
         const cooldown = Cooldown.prototype.getCooldown(!!heldItem ? heldItem.name : "other");
-        const ticks = Math.floor(Math.random() * (this.max - this.min) + this.min) + cooldown;
+        const ticks = Math.floor(Math.random() * (this.maxDmg - this.minDmg) + this.minDmg) + cooldown;
         return Math.max(1, ticks);
+    }
+}
+
+export class OldPVPTicks extends MaxDamageOffset {
+    private lastAttackTime: number = 0;
+    
+    public constructor(bot: Bot, public cps: number) {
+        super(bot, 0, 0); // Min/max damage offset doesn't apply in 1.7 PVP
+    }
+    
+    override getTicks(item: Item): number {
+        // Convert CPS (clicks per second) to ticks between attacks
+        // For fractional precision, we use the exact value rather than flooring
+        const ticksBetweenAttacks = 20 / this.cps;
+        
+        // Get current bot tick time
+        const currentTime = this.bot.time.age;
+        
+        // Calculate time since last attack
+        const timeSinceLastAttack = currentTime - this.lastAttackTime;
+        
+        // Use probability to simulate partial CPS values
+        // Higher CPS means higher chance of clicking this tick
+        const clickProbability = this.cps / 20;
+        const shouldClick = Math.random() < clickProbability;
+        
+        // If enough time has passed since last attack (at least 1 tick)
+        // AND either we're due for a click based on CPS timing or probability says we should click
+        if (timeSinceLastAttack >= 1 && 
+            (timeSinceLastAttack >= ticksBetweenAttacks || shouldClick)) {
+            this.lastAttackTime = currentTime;
+            return 1; // Attack immediately
+        }
+        
+        // Random small variance to avoid perfectly regular patterns
+        const variance = Math.random() * 0.2 - 0.1; // ±10% variance
+        const nextTickDelay = Math.max(1, Math.floor(ticksBetweenAttacks * (1 + variance)));
+        
+        // Return remaining ticks until next possible attack
+        return Math.max(1, nextTickDelay - timeSinceLastAttack);
     }
 }
