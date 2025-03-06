@@ -6,6 +6,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Minecraft](https://img.shields.io/badge/MC-1.8--1.19-brightgreen.svg)](https://www.minecraft.net/)
+[![Discord](https://img.shields.io/badge/chat-on%20discord-7289da.svg)](https://discord.gg/ytKSJPbUX6)
 
 </div>
 
@@ -25,9 +26,6 @@ Both modules extend existing plugins (mineflayer-pvp and minecrafthawkeye) with 
 <h2 align="center">🗡️ SwordPvP Module</h2>
 
 The SwordPvP module delivers accurate melee combat with features designed to match the effectiveness of modern PvP clients.
-
-For complete API documentation including all configuration options, methods, properties, and events, see the [SwordPvP API Docs](src/sword/API.md).
-
 
 ### Key Features
 
@@ -88,5 +86,135 @@ The BowPvP module enhances ranged combat with improved targeting and tactical aw
 ## Installation
 
 ```bash
-npm install @nxg-org/mineflayer-custom-pvp
+npm install mineflayer-advanced-pvp
 ```
+
+## Basic Usage
+
+```javascript
+const mineflayer = require('mineflayer')
+const customPVP = require('mineflayer-advanced-pvp')
+const { pathfinder, Movements } = require('mineflayer-pathfinder')
+
+// Create your bot
+const bot = mineflayer.createBot({
+  host: 'localhost',
+  username: 'CombatBot'
+})
+
+// Load plugins
+bot.loadPlugin(customPVP)
+bot.loadPlugin(pathfinder)
+
+// Configure pathfinder movements
+const moves = new Movements(bot)
+moves.allowFreeMotion = true
+moves.allowParkour = true
+moves.allowSprinting = true
+bot.pathfinder.setMovements(moves)
+
+// The plugin adds bot.swordpvp and bot.bowpvp
+bot.once('spawn', () => {
+  // Configure combat options
+  bot.swordpvp.options.cps = 20
+  bot.swordpvp.options.critConfig.reaction.enabled = false
+  bot.swordpvp.options.rotateConfig.smooth = true
+  
+  // Configure bow combat
+  bot.bowpvp.useOffhand = false
+  
+  // Track attacks
+  bot.swordpvp.on('attackedTarget', (target, reason, ticks) => {
+    console.log(`Attack: ${reason}, next attack in ${ticks} ticks`)
+  })
+})
+
+// Function to start fighting
+const fight = () => {
+  const target = bot.nearestEntity(e => e.type === 'player')
+  if (target) {
+    // Equip shield if available
+    equipShield()
+    // Start attacking
+    bot.swordpvp.attack(target)
+  }
+}
+
+// Helper to equip shield
+async function equipShield() {
+  if (bot.supportFeature('doesntHaveOffHandSlot')) return
+  const shield = bot.util.inv.getAllItemsExceptCurrent('off-hand').find(e => e.name === 'shield')
+  if (shield) {
+    await bot.util.inv.customEquip(shield, 'off-hand')
+  }
+}
+
+// Command handler
+bot.on('chat', (username, message) => {
+  switch (message) {
+    case 'sword':
+      bot.on('physicsTick', fight)
+      break
+    
+    case 'stop':
+      bot.removeListener('physicsTick', fight)
+      bot.swordpvp.stop()
+      break
+      
+    case 'packetmode':
+      bot.swordpvp.options.critConfig.mode = 'packet'
+      break
+  }
+})
+```
+
+## Advanced Configuration
+
+```javascript
+// Configure SwordPvP options
+bot.once('spawn', () => {
+  // Attack speed
+  bot.swordpvp.options.cps = 20
+  
+  // Critical hit configuration
+  bot.swordpvp.options.critConfig.enabled = true
+  bot.swordpvp.options.critConfig.mode = 'packet'
+  bot.swordpvp.options.critConfig.reaction.enabled = false
+  
+  // Follow configuration
+  bot.swordpvp.options.followConfig.mode = 'jump'
+  
+  // Strafing configuration
+  bot.swordpvp.options.strafeConfig.enabled = true
+  bot.swordpvp.options.strafeConfig.mode.mode = 'intelligent'
+  
+  // Tap configuration for knockback
+  bot.swordpvp.options.tapConfig.enabled = true
+  bot.swordpvp.options.tapConfig.mode = 'wtap'
+  
+  // Look behavior
+  bot.swordpvp.options.rotateConfig.smooth = true
+  bot.swordpvp.options.rotateConfig.mode = 'constant'
+})
+```
+
+For complete API documentation including all configuration options, methods, properties, and events, see the [SwordPvP API Documentation](src/swordpvp/API.md).
+
+---
+
+## Future Development
+
+- Expanded shield mechanics with proper movement penalties
+- Additional combat styles and strategies
+- Further optimization for server-specific combat mechanics
+
+If you're interested in crystal PvP, check out [mineflayer-auto-crystal](https://github.com/nxg-org/mineflayer-auto-crystal).
+
+## Support
+
+Need help? Join our [Discord community](https://discord.gg/ytKSJPbUX6) for support, discussions, and updates.
+
+## Credits
+
+- Based on [mineflayer-pvp](https://github.com/PrismarineJS/mineflayer-pvp) and [minecrafthawkeye](https://github.com/sefirosweb/minecraftHawkEye)
+- Critical attack system inspired by modern PvP clients
