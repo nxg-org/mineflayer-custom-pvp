@@ -318,8 +318,9 @@ export class SwordPvp extends EventEmitter {
     const eyeDir = this.bot.util.getViewDir()
     const reach = this.options.genericConfig.attackRange;
 
-    const canSee = this.bot.util.raytrace.entityRaytrace(eyePos, eyeDir, reach, (e) => e.id === this.target?.id)
-    this.wasVisible = canSee !== null;
+    const hit = this.bot.util.raytrace.entityRaytrace(eyePos, eyeDir, reach, (e) => e.id === this.target?.id)
+    
+    this.wasVisible = hit === this.target
   }
 
   async causeCritical(): Promise<boolean> {
@@ -657,7 +658,7 @@ export class SwordPvp extends EventEmitter {
       this.willBeFirstHit = true;
       return;
     }
-    if (!this.wasVisible) return;
+    if (!this.options.genericConfig.hitThroughWalls && !this.wasVisible) return;
     if (Math.random() < this.options.genericConfig.missChancePerTick) {
       // this.timeToNextAttack = 0;
       await this.bot.waitForTicks(1);

@@ -25,6 +25,7 @@ export type GenericConfig = {
   tooCloseRange: number;
   missChancePerTick: number;
   enemyReach: number;
+  hitThroughWalls: boolean;
 };
 
 export type SwingBehaviorConfig = {
@@ -105,6 +106,7 @@ export const defaultConfig: FullConfig = {
     tooCloseRange: 2.5,
     missChancePerTick: 0.0,
     enemyReach: 3,
+    hitThroughWalls: false,
   },
   tapConfig: {
     enabled: true,

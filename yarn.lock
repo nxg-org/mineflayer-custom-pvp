@@ -19,6 +19,7 @@
 "@nxg-org/mineflayer-custom-pvp@file:.":
   version "1.7.0"
   dependencies:
+    "@nxg-org/mineflayer-smooth-look" "^1.0.3"
     "@nxg-org/mineflayer-tracker" "^1.1.1"
     "@nxg-org/mineflayer-trajectories" "^1.2.0"
     "@nxg-org/mineflayer-util-plugin" "^1.8.4"
