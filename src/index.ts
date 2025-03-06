@@ -1,6 +1,7 @@
 import { Shot } from "@nxg-org/mineflayer-trajectories";
 import utilPlugin from "@nxg-org/mineflayer-util-plugin";
 import trackerPlugin from "@nxg-org/mineflayer-tracker";
+import {loader as lookPlugin} from "@nxg-org/mineflayer-smooth-look"
 // import jumpPathing from "@nxg-org/mineflayer-jump-pathing";
 import { SwordPvp } from "./sword/swordpvp";
 import { Bot } from "mineflayer";
@@ -24,6 +25,7 @@ declare module "mineflayer" {
 export default function plugin(bot: Bot) {
     if (!bot.util) bot.loadPlugin(utilPlugin);
     if (!bot.tracker || !bot.projectiles) bot.loadPlugin(trackerPlugin)
+    if (!bot.smoothLook) bot.loadPlugin(lookPlugin)
     // if (!bot.jumpPather) bot.loadPlugin(jumpPathing)
     bot.swordpvp = new SwordPvp(bot);
     bot.bowpvp = new BowPVP(bot);

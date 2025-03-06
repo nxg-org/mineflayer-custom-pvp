@@ -585,14 +585,17 @@ export class SwordPvp extends EventEmitter {
   rotate() {
     if (!this.options.rotateConfig.enabled || !this.target) return false;
     const pos = this.target.position.offset(0, this.target.height, 0);
+
+    const lookFunc = this.options.rotateConfig.smooth ? this.bot.smoothLook.lookAt : this.bot.lookAt;
+  
     if (this.options.rotateConfig.mode === "constant") {
-      this.bot.lookAt(pos);
+      lookFunc(pos);
       return;
     } else {
       if (this.ticksToNextAttack !== -1) return;
       switch (this.options.rotateConfig.mode) {
         case "legit":
-          this.bot.lookAt(pos);
+          lookFunc(pos);
           break;
         case "instant":
           this.bot.lookAt(pos, true);
