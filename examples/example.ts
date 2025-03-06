@@ -31,6 +31,7 @@ class KillBot {
     this.bot.once("spawn", async () => {
 
       this.bot.physics.yawSpeed = 50;
+      (this.bot.physics as any).pitchSpeed = 50;
       this.bot.loadPlugin(customPVP);
       this.bot.loadPlugin(pathfinder);
       // this.bot.jumpPather.searchDepth = 10;
@@ -46,6 +47,8 @@ class KillBot {
       // this.bot.swordpvp.options.tapConfig.enabled = false
       this.bot.swordpvp.options.cps = 20
       this.bot.swordpvp.options.critConfig.reaction.enabled = false;
+      this.bot.swordpvp.options.rotateConfig.smooth = true
+
       this.bot.bowpvp.useOffhand = false;
       this.bot.setControlState("forward", true);
       await this.bot.waitForTicks(20);

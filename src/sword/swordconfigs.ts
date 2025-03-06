@@ -87,6 +87,7 @@ export type ShieldConfig = {
 export type RotateConfig = {
   enabled: boolean;
   smooth: boolean;
+  lookAtHidden: boolean;
   mode: "legit" | "instant" | "constant" | "silent" | "ignore";
 };
 
@@ -139,6 +140,7 @@ export const defaultConfig: FullConfig = {
   rotateConfig: {
     enabled: true,
     smooth: false,
+    lookAtHidden: true,
     mode: "constant",
   },
   shieldConfig: {

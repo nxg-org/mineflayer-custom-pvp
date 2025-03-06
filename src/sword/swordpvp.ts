@@ -5,20 +5,12 @@ import { Item } from "prismarine-item";
 import { EventEmitter } from "stream";
 import { promisify } from "util";
 import { Vec3 } from "vec3";
-import {
-  getTargetYaw,
-  lookingAt,
-  movingAt,
-  toRadians
-} from "../calc/mathUtils";
+import { getTargetYaw, lookingAt, movingAt, toRadians } from "../calc/mathUtils";
 import { attack } from "../util";
-import {
-  defaultConfig,
-  FullConfig,
-  getConfig
-} from "./swordconfigs";
+import { defaultConfig, FullConfig, getConfig } from "./swordconfigs";
 import { MaxDamageOffset, NewPVPTicks, OldPVPTicks } from "./sworddata";
 import { followEntity, stopFollow } from "./swordutil";
+import { EntityRaycastReturn } from "@nxg-org/mineflayer-util-plugin/lib/rayTracingFunctions";
 const { getEntityAABB } = AABBUtils;
 
 const PIOver3 = Math.PI / 3;
@@ -33,6 +25,7 @@ export class SwordPvp extends EventEmitter {
   public ticksSinceLastTargetHit: number = 0;
   public ticksSinceLastSwitch: number = 0;
   public wasInRange: boolean = false;
+  public wasVisible: boolean = false;
   public meleeAttackRate: MaxDamageOffset;
   public target?: Entity;
   public lastTarget?: Entity;
@@ -47,7 +40,7 @@ export class SwordPvp extends EventEmitter {
 
   constructor(public bot: Bot, public options: FullConfig = getConfig(bot)) {
     super();
-    this.meleeAttackRate = bot.supportFeature("doesntHaveOffHandSlot") ?  new OldPVPTicks(bot, options.cps ?? 15) : new NewPVPTicks(bot);
+    this.meleeAttackRate = bot.supportFeature("doesntHaveOffHandSlot") ? new OldPVPTicks(bot, options.cps ?? 15) : new NewPVPTicks(bot);
 
     const oldEmit = this.bot.emit.bind(this.bot);
     const oldEmit1 = this.bot._client.emit.bind(this.bot._client);
@@ -66,9 +59,9 @@ export class SwordPvp extends EventEmitter {
     this.bot.on("physicsTick", this.checkForShield);
     this.bot.on("entitySwingArm", this.swingUpdate);
 
-    this.bot.on('entityUpdate', this.hurtUpdate);
-    this.bot.on('entityDead', this.removalUpdate);
-    this.bot.on('entityGone', this.removalUpdate); // 1.8.8 compat.
+    this.bot.on("entityUpdate", this.hurtUpdate);
+    this.bot.on("entityDead", this.removalUpdate);
+    this.bot.on("entityGone", this.removalUpdate); // 1.8.8 compat.
     // this.bot.on("entityHurt", this.hurtUpdate);
     // this.bot.on('health', this.hurtUpdate.bind(this, this.bot.entity))
   }
@@ -158,7 +151,6 @@ export class SwordPvp extends EventEmitter {
     }
   };
 
-
   private lastHealth = 20;
 
   removalUpdate = async (entity: Entity) => {
@@ -166,23 +158,21 @@ export class SwordPvp extends EventEmitter {
     if (entity.id === this.target.id) {
       this.stop();
     }
-  }
+  };
 
   hurtUpdate = async (entity: Entity) => {
     if (!this.target) return;
     if (entity === this.bot.entity) {
-  
       if (this.lastHealth <= this.bot.health ?? 20) {
         this.lastHealth = this.bot.health;
         return;
-      } 
+      }
 
       this.lastHealth = this.bot.health;
       this.ticksSinceLastHurt = 0;
 
       if (this.ticksSinceTargetAttack < 6) this.ticksSinceLastTargetHit = 0;
       // console.log('hey', entity === this.target, entity.name, this.target?.name, this.ticksSinceLastHurt, this.ticksSinceLastTargetHit, this.ticksSinceTargetAttack)
-
 
       if (this.options.onHitConfig.kbCancel.enabled) {
         switch (this.options.onHitConfig.kbCancel.mode) {
@@ -195,7 +185,6 @@ export class SwordPvp extends EventEmitter {
                   if (this.options.onHitConfig.kbCancel.hRatio || this.options.onHitConfig.kbCancel.hRatio === 0) {
                     this.bot.entity.velocity.x *= this.options.onHitConfig.kbCancel.hRatio;
                     this.bot.entity.velocity.z *= this.options.onHitConfig.kbCancel.hRatio;
-                   
                   }
                   if (this.options.onHitConfig.kbCancel.yRatio || this.options.onHitConfig.kbCancel.yRatio === 0)
                     this.bot.entity.velocity.y *= this.options.onHitConfig.kbCancel.yRatio;
@@ -286,6 +275,7 @@ export class SwordPvp extends EventEmitter {
     this.ticksSinceLastTargetHit++;
     this.ticksSinceLastSwitch++;
     this.checkRange();
+    this.checkVisibility();
     this.rotate();
     this.doMove();
     this.doStrafe();
@@ -296,7 +286,6 @@ export class SwordPvp extends EventEmitter {
       if (this.bot.entity.velocity.y <= -0.25) this.bot.setControlState("sprint", false);
       if (this.bot.entity.onGround) this.sprintTap();
       this.attemptAttack("normal");
-
     }
   };
 
@@ -323,6 +312,16 @@ export class SwordPvp extends EventEmitter {
     this.wasInRange = inRange;
   }
 
+  checkVisibility() {
+    if (!this.target) return;
+    const eyePos = this.bot.entity.position.offset(0, this.bot.entity.height, 0);
+    const eyeDir = this.bot.util.getViewDir()
+    const reach = this.options.genericConfig.attackRange;
+
+    const canSee = this.bot.util.raytrace.entityRaytrace(eyePos, eyeDir, reach, (e) => e.id === this.target?.id)
+    this.wasVisible = canSee !== null;
+  }
+
   async causeCritical(): Promise<boolean> {
     if (!this.options.critConfig.enabled || !this.target) return false;
     if ((this.bot.entity as any).isInWater || (this.bot.entity as any).isInLava) return false;
@@ -330,6 +329,7 @@ export class SwordPvp extends EventEmitter {
       case "packet":
         if (this.ticksToNextAttack !== -1) return false;
         if (!this.wasInRange) return false;
+        if (!this.wasVisible) return false;
         if (!this.bot.entity.onGround) return false;
         if (this.options.critConfig.bypass) {
           this.bot.setControlState("sprint", false);
@@ -353,8 +353,7 @@ export class SwordPvp extends EventEmitter {
       case "shorthop":
         if (this.ticksToNextAttack !== 1) return false;
         if (!this.bot.entity.onGround) return false;
-        if (this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange))
-          return false;
+        if (this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange)) return false;
         this.bot.entity.position = this.bot.entity.position.offset(0, 0.25, 0);
 
         this.bot.entity.onGround = false;
@@ -364,8 +363,7 @@ export class SwordPvp extends EventEmitter {
         return true;
       case "hop":
         if (this.ticksToNextAttack > 8) return false;
-        const inReach =
-          this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange);
+        const inReach = this.botReach() <= (this.options.critConfig.attemptRange || this.options.genericConfig.attackRange);
         if (!inReach) return false;
         if (this.ticksToNextAttack !== 8 && !this.willBeFirstHit) {
           return false;
@@ -405,8 +403,8 @@ export class SwordPvp extends EventEmitter {
             break;
         }
       }
-      
-      const tooClose = this.botReach() > this.options.genericConfig.tooCloseRange
+
+      const tooClose = this.botReach() > this.options.genericConfig.tooCloseRange;
       shouldApproach = shouldApproach && tooClose;
 
       if (!this.bot.getControlState("back")) {
@@ -473,9 +471,9 @@ export class SwordPvp extends EventEmitter {
             const smartDir = intelliRand < 0.5 ? "left" : "right";
             const oppositeSmartDir = intelliRand >= 0.5 ? "left" : "right";
             this.currentStrafeDir = smartDir;
-          } 
-            
-          const oppositeSmartDir = this.currentStrafeDir === 'left' ? "right" : "left";
+          }
+
+          const oppositeSmartDir = this.currentStrafeDir === "left" ? "right" : "left";
           if (this.botReach() <= this.options.genericConfig.attackRange + 3) {
             this.bot.setControlState(this.currentStrafeDir!, true);
             this.bot.setControlState(oppositeSmartDir, false);
@@ -495,6 +493,7 @@ export class SwordPvp extends EventEmitter {
     if (!this.target) return;
     if (!this.bot.entity.onGround) return false;
     if (!this.wasInRange) return false;
+    if (!this.wasVisible) return false;
     if (!this.options.tapConfig.enabled) return false;
     switch (this.options.tapConfig.mode) {
       case "wtap":
@@ -509,8 +508,6 @@ export class SwordPvp extends EventEmitter {
         // this.bot.setControlState("sprint", true);
         // this.bot.setControlState("back", false);
         // }
-
-
 
         // const listener = () => {
         //   if (!this.target) return cleanup();
@@ -556,7 +553,7 @@ export class SwordPvp extends EventEmitter {
         this.bot.setControlState("back", false);
         this.bot.setControlState("forward", true);
         this.bot.setControlState("sprint", true);
-        
+
         break;
       default:
         break;
@@ -564,7 +561,7 @@ export class SwordPvp extends EventEmitter {
   }
 
   async toggleShield() {
-    if (this.ticksToNextAttack !== 0 || !this.target || !this.wasInRange) return false;
+    if (this.ticksToNextAttack !== 0 || !this.target || !this.wasInRange || !this.wasVisible) return false;
     const shield = this.shieldEquipped();
     const wasShieldActive = shield;
     if (wasShieldActive && this.options.shieldConfig.enabled && this.options.shieldConfig.mode === "legit") {
@@ -584,10 +581,13 @@ export class SwordPvp extends EventEmitter {
 
   rotate() {
     if (!this.options.rotateConfig.enabled || !this.target) return false;
+    if (!this.options.rotateConfig.lookAtHidden && !this.wasVisible) return false;
     const pos = this.target.position.offset(0, this.target.height, 0);
 
-    const lookFunc = this.options.rotateConfig.smooth ? this.bot.smoothLook.lookAt : this.bot.lookAt;
-  
+    const lookFunc = this.options.rotateConfig.smooth
+      ? this.bot.smoothLook.lookAt.bind(this.bot.smoothLook)
+      : this.bot.lookAt.bind(this.bot);
+
     if (this.options.rotateConfig.mode === "constant") {
       lookFunc(pos);
       return;
@@ -625,26 +625,25 @@ export class SwordPvp extends EventEmitter {
         return;
       }
 
-
       if (this.options.critConfig.reaction.maxWaitDistance) {
         if (this.botReach() >= this.options.critConfig.reaction.maxWaitDistance) {
           this.tickOverride = false;
           return;
         }
       }
-  
 
-      if (this.bot.entity.velocity.y <= -0.25 && this.ticksToNextAttack <= (-1 + (this.options.critConfig.reaction.maxPreemptiveTicks ?? 0))) {
-          break
-      } 
+      if (
+        this.bot.entity.velocity.y <= -0.25 &&
+        this.ticksToNextAttack <= -1 + (this.options.critConfig.reaction.maxPreemptiveTicks ?? 0)
+      ) {
+        break;
+      }
 
       if (this.options.critConfig.reaction.maxWaitTicks && !noTickLimit) {
-        if (this.ticksToNextAttack <= (-1 - this.options.critConfig.reaction.maxWaitTicks)) {
+        if (this.ticksToNextAttack <= -1 - this.options.critConfig.reaction.maxWaitTicks) {
           break;
         }
       }
-
-
     }
     this.bot.setControlState("sprint", false);
     await this.attemptAttack("reaction");
@@ -658,6 +657,7 @@ export class SwordPvp extends EventEmitter {
       this.willBeFirstHit = true;
       return;
     }
+    if (!this.wasVisible) return;
     if (Math.random() < this.options.genericConfig.missChancePerTick) {
       // this.timeToNextAttack = 0;
       await this.bot.waitForTicks(1);
