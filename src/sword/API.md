@@ -279,8 +279,10 @@ bot.pvp.on('attackedTarget', (target, reason, ticksToNextAttack) => {
 Here's a basic example showing how to use the SwordPvp module:
 
 ```js
-// Import the module
-const { SwordPvp } = require('mineflayer-sword-pvp')
+// Import required modules
+const mineflayer = require('mineflayer')
+const customPVP = require('mineflayer-advanced-pvp')
+const { pathfinder, Movements } = require('mineflayer-pathfinder')
 
 // Create your bot
 const bot = mineflayer.createBot({
@@ -288,44 +290,74 @@ const bot = mineflayer.createBot({
   username: 'Fighter'
 })
 
-// Initialize the pvp instance with custom config
-bot.loadPlugin(require('@nxg-org/mineflayer-util-plugin'))
-const pvp = new SwordPvp(bot, {
-  genericConfig: {
-    attackRange: 3.5,
-    viewDistance: 100
-  },
-  critConfig: {
-    enabled: true,
-    mode: 'packet'
-  }
+// Load plugins - the customPVP plugin adds bot.swordpvp and bot.bowpvp
+bot.loadPlugin(customPVP)
+bot.loadPlugin(pathfinder)
+
+// Configure pathfinder for combat movement
+bot.once('spawn', () => {
+  const moves = new Movements(bot)
+  moves.allowFreeMotion = true
+  moves.allowParkour = true
+  moves.allowSprinting = true
+  bot.pathfinder.setMovements(moves)
+  
+  // Configure sword combat options
+  bot.swordpvp.options.cps = 20
+  bot.swordpvp.options.critConfig.reaction.enabled = false
+  bot.swordpvp.options.rotateConfig.smooth = true
 })
 
-// Attack the nearest player
-bot.on('physicsTick', () => {
-  const player = bot.nearestEntity(entity => 
+// Listen for pvp events
+bot.swordpvp.on('startedAttacking', (target) => {
+  bot.chat(`Engaging ${target.username || target.name}!`)
+})
+
+bot.swordpvp.on('stoppedAttacking', () => {
+  bot.chat('Combat complete')
+})
+
+bot.swordpvp.on('attackedTarget', (target, reason, ticks) => {
+  console.log(`Attack: ${reason}, next attack in ${ticks} ticks`)
+})
+
+// Create a fight function to start combat
+const fight = () => {
+  const target = bot.nearestEntity(entity => 
     entity.type === 'player' && 
     entity.position.distanceTo(bot.entity.position) < 6
   )
   
-  if (player && !pvp.target) {
-    pvp.attack(player)
+  if (target) {
+    bot.swordpvp.attack(target)
   }
-})
+}
 
-// Listen for pvp events
-pvp.on('startedAttacking', (target) => {
-  bot.chat(`Engaging ${target.username || target.name}!`)
-})
-
-pvp.on('stoppedAttacking', () => {
-  bot.chat('Combat complete')
-})
-
-// Stop attacking on command
+// Handle commands via chat
 bot.on('chat', (username, message) => {
-  if (message === 'stop' && username === bot.username) {
-    pvp.stop()
+  const args = message.split(' ')
+  
+  switch (args[0]) {
+    case 'sword':
+      // Start combat loop
+      bot.on('physicsTick', fight)
+      break
+      
+    case 'stop':
+      // Stop combat
+      bot.removeListener('physicsTick', fight)
+      bot.swordpvp.stop()
+      break
+      
+    case 'packetmode':
+      // Change critical hit mode
+      bot.swordpvp.options.critConfig.mode = 'packet'
+      break
+      
+    case 'settings':
+      // Log current settings
+      console.log(bot.swordpvp.options)
+      break
   }
 })
 ```
@@ -333,19 +365,44 @@ bot.on('chat', (username, message) => {
 Advanced example with weapon switching and shield control:
 
 ```js
-// Enable shield disabling for newer versions of Minecraft
-if (!bot.supportFeature('doesntHaveOffHandSlot')) {
-  // Auto-switch to axe when target is shielding
-  pvp.on('attackedTarget', async (target, reason) => {
-    if (reason === 'disableshield') {
-      bot.chat('Breaking shield!')
-    }
-  })
+// Helper function to equip shield
+async function equipShield() {
+  if (bot.supportFeature('doesntHaveOffHandSlot')) return
   
-  // Place shield in offhand if available
-  const shield = bot.inventory.items().find(item => item.name.includes('shield'))
+  // Use the utility plugin's inventory functions
+  const shield = bot.util.inv.getAllItemsExceptCurrent('off-hand')
+    .find(item => item.name === 'shield')
+    
   if (shield) {
-    await bot.equip(shield, 'off-hand')
+    await bot.util.inv.customEquip(shield, 'off-hand')
   }
 }
+
+// Shield defense mode
+let defend = false
+
+// Shield defense behavior
+bot.on('physicsTick', () => {
+  if (!defend) return
+  
+  // Check if someone is aiming at the bot
+  const info = bot.projectiles.isAimedAt
+  if (info) {
+    // Look at the entity and activate shield
+    bot.lookAt(info.entity.position.offset(0, 1.6, 0), true)
+    if (!bot.util.entity.isOffHandActive()) {
+      bot.activateItem(true)
+    }
+  }
+})
+
+// Chat command to enable shield defense
+bot.on('chat', (username, message) => {
+  if (message === 'defend') {
+    defend = true
+    equipShield()
+  } else if (message === 'defendstop') {
+    defend = false
+  }
+})
 ```
