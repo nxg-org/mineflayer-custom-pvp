@@ -314,13 +314,27 @@ export class SwordPvp extends EventEmitter {
 
   checkVisibility() {
     if (!this.target) return;
+
+    // first check, see if bounding boxes are collided.
+    // If so, we can obviously see them.
+    const bb0 = getEntityAABB(this.bot.entity);
+    const bb1 = getEntityAABB(this.target);
+    if (bb0.intersects(bb1)) {
+      this.wasVisible = true;
+      return;
+    }
+
     const eyePos = this.bot.entity.position.offset(0, this.bot.entity.height, 0);
     const eyeDir = this.bot.util.getViewDir()
     const reach = this.options.genericConfig.attackRange;
 
+
+    
     const hit = this.bot.util.raytrace.entityRaytrace(eyePos, eyeDir, reach, (e) => e.id === this.target?.id)
     
     this.wasVisible = hit === this.target
+    if (this.wasVisible) return;
+    
   }
 
   async causeCritical(): Promise<boolean> {
