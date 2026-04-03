@@ -35,7 +35,7 @@ export function attack (bot: Bot, target: Entity, swing = true) {
 
   function swingArm (bot: Bot, arm = 'right', showHand = true) {
     const hand = arm === 'right' ? 0 : 1
-    const packet = {}
-    if (showHand) Object.assign(packet, hand)
+    const packet = {} as Record<string, any>
+    if (showHand) packet.hand = hand
     bot._client.write('arm_animation', packet)
   }

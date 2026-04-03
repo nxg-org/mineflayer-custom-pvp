@@ -33,6 +33,7 @@ export class SwordPvp extends EventEmitter {
   private willBeFirstHit: boolean = true;
   private tickOverride: boolean = false;
   private targetShielding: boolean = false;
+  private shieldToggleListener?: (entity: Entity, reason: string, ticks: number) => void;
 
   private currentStrafeDir?: ControlState;
   private strafeCounter: number = 0;
@@ -160,6 +161,12 @@ export class SwordPvp extends EventEmitter {
     }
   };
 
+  private clearShieldToggleListener() {
+    if (!this.shieldToggleListener) return;
+    this.off("attackedTarget", this.shieldToggleListener);
+    this.shieldToggleListener = undefined;
+  }
+
   hurtUpdate = async (entity: Entity) => {
     if (!this.target) return;
     if (entity === this.bot.entity) {
@@ -203,7 +210,7 @@ export class SwordPvp extends EventEmitter {
 
           case "jump":
           case "jumpshift":
-            if (lookingAt(entity, this.bot.entity, this.options.genericConfig.enemyReach)) {
+            if (lookingAt(entity, this.target, this.options.genericConfig.enemyReach)) {
               this.bot.setControlState("right", false);
               this.bot.setControlState("left", false);
               this.bot.setControlState("back", false);
@@ -226,19 +233,20 @@ export class SwordPvp extends EventEmitter {
             break;
         }
       }
-      const before = performance.now();
-      // console.log("before:", this.bot.entity.velocity)
       await new Promise((res, rej) => {
         const listener = (packet: any) => {
           const entity = this.bot.entities[packet.entityId];
           if (entity !== this.bot.entity) return;
-          const notchVel = new Vec3(packet.velocityX, packet.velocityY, packet.velocityZ);
           this.bot._client.removeListener("entity_velocity", listener);
+          clearTimeout(timeout);
           res(undefined);
         };
+        const timeout = setTimeout(() => {
+          this.bot._client.removeListener("entity_velocity", listener);
+          res(undefined);
+        }, 500);
         this.bot._client.on("entity_velocity", listener);
       });
-      // console.log("after:", this.bot.entity.velocity,  performance.now() - before)
       if (this.options.swingConfig.mode === "fullswing") this.reactionaryCrit();
     }
   };
@@ -258,6 +266,7 @@ export class SwordPvp extends EventEmitter {
 
   stop() {
     if (!this.target) return;
+    this.clearShieldToggleListener();
     this.lastTarget = this.target;
     this.bot.tracker.stopTrackingEntity(this.target);
     this.target = undefined;
@@ -585,18 +594,21 @@ export class SwordPvp extends EventEmitter {
     if (this.ticksToNextAttack !== 0 || !this.target || !this.wasInRange || !this.wasVisible) return false;
     const shield = this.shieldEquipped();
     const wasShieldActive = shield;
+    this.clearShieldToggleListener();
     if (wasShieldActive && this.options.shieldConfig.enabled && this.options.shieldConfig.mode === "legit") {
       this.bot.deactivateItem();
     }
 
-    this.once("attackedTarget", async (entity) => {
+    this.shieldToggleListener = async (entity) => {
+      this.clearShieldToggleListener();
       await this.bot.waitForTicks(3);
       if (wasShieldActive && this.options.shieldConfig.enabled && this.options.shieldConfig.mode === "legit") {
         this.bot.activateItem(true);
       } else if (!this.bot.util.entity.isOffHandActive() && shield && this.options.shieldConfig.mode === "blatant") {
         this.bot.activateItem(true);
       }
-    });
+    };
+    this.on("attackedTarget", this.shieldToggleListener);
     // await once(this.bot, "attackedTarget");
   }
 
