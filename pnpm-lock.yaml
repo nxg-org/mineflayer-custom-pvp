@@ -30,9 +30,21 @@ importers:
       mineflayer:
         specifier: ^4.18.0
         version: 4.37.0
+      prismarine-block:
+        specifier: ^1.23.0
+        version: 1.23.0
+      prismarine-entity:
+        specifier: ^2.6.0
+        version: 2.6.0
+      prismarine-item:
+        specifier: ^1.18.0
+        version: 1.18.0
       typescript:
         specifier: ^4.5.2
         version: 4.9.5
+      vec3:
+        specifier: ^0.2.0
+        version: 0.2.0
 
 packages:
 
@@ -389,6 +401,9 @@ packages:
 
   vec3@0.1.10:
     resolution: {integrity: sha512-Sr1U3mYtMqCOonGd3LAN9iqy0qF6C+Gjil92awyK/i2OwiUo9bm7PnLgFpafymun50mOjnDcg4ToTgRssrlTcw==}
+
+  vec3@0.2.0:
+    resolution: {integrity: sha512-jOjU4zbCNWOKOGLHop1I0J2Ar4h5Zz76455LJhJKhiOJwI21QP6d5TnKklNZDKG+c5h71zWtPAbd9wh+Va57OQ==}
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -861,6 +876,8 @@ snapshots:
   uuid@8.3.2: {}
 
   vec3@0.1.10: {}
+
+  vec3@0.2.0: {}
 
   webidl-conversions@3.0.1: {}
 
