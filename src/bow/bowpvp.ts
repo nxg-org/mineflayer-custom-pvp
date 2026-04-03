@@ -1,7 +1,6 @@
 import { Bot } from "mineflayer";
 import { Entity } from "prismarine-entity";
 import { Item } from "prismarine-item";
-import md from "minecraft-data";
 import { performance } from "perf_hooks";
 import { promisify } from "util";
 import { CheckedShot, ShotPlanner } from "./shotPlanner";
