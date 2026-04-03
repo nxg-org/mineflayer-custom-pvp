@@ -3,7 +3,7 @@ import { Entity } from "prismarine-entity"
 
 
 export function attack (bot: Bot, target: Entity, swing = true) {
-    // arm animation comes before the use_entity packet
+    // Vanilla sends the attack interaction first, then the swing packet.
     useEntity(bot, target, 1)
     if (swing) {
       swingArm(bot)
@@ -13,6 +13,7 @@ export function attack (bot: Bot, target: Entity, swing = true) {
 
 
   function useEntity (bot: Bot, target: Entity, leftClick: 0 | 1, x?: number, y?: number, z?: number) {
+    const sneaking = bot.getControlState('sneak')
     if (x && y && z) {
       bot._client.write('use_entity', {
         target: target.id,
@@ -20,13 +21,13 @@ export function attack (bot: Bot, target: Entity, swing = true) {
         x,
         y,
         z,
-        sneaking: false
+        sneaking
       })
     } else {
       bot._client.write('use_entity', {
         target: target.id,
         mouse: leftClick,
-        sneaking: false
+        sneaking
       })
     }
   }
