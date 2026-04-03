@@ -289,18 +289,24 @@ export class SwordPvp extends EventEmitter {
     }
   };
 
+  private getEntityEyeHeight(entity: Entity): number {
+    // Vanilla interaction reach is measured from the eye position.
+    // Prismarine entities do not expose eye height directly, so we approximate it from the current hitbox height.
+    return entity.height * 0.9;
+  }
+
+  private getEntityEyePosition(entity: Entity): Vec3 {
+    return entity.position.offset(0, this.getEntityEyeHeight(entity), 0);
+  }
+
   botReach(): number {
     if (!this.target) return 10000;
-    const eye = getEntityAABB(this.target).distanceToVec(this.bot.entity.position.offset(0, this.bot.entity.height, 0));
-    const foot = getEntityAABB(this.target).distanceToVec(this.bot.entity.position);
-    return Math.min(eye, foot);
+    return getEntityAABB(this.target).distanceToVec(this.getEntityEyePosition(this.bot.entity));
   }
 
   targetReach(): number {
     if (!this.target) return 10000;
-    const eye = getEntityAABB(this.bot.entity).distanceToVec(this.target.position.offset(0, this.target.height, 0));
-    const foot = getEntityAABB(this.bot.entity).distanceToVec(this.target.position);
-    return Math.min(eye, foot);
+    return getEntityAABB(this.bot.entity).distanceToVec(this.getEntityEyePosition(this.target));
   }
 
   checkRange() {
@@ -324,7 +330,7 @@ export class SwordPvp extends EventEmitter {
       return;
     }
 
-    const eyePos = this.bot.entity.position.offset(0, this.bot.entity.height, 0);
+    const eyePos = this.getEntityEyePosition(this.bot.entity);
     const eyeDir = this.bot.util.getViewDir()
     const reach = this.options.genericConfig.attackRange;
 
