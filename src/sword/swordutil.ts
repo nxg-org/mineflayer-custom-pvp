@@ -87,8 +87,6 @@ export function generateGoal(bot: Bot, entity: Entity, options: FullConfig) {
     }
     case "custom": {
       return options.followConfig.goal(bot, entity, options);
-
-      break
     }
   }
 }
@@ -131,7 +129,6 @@ export function followEntity(bot: Bot, goal: any, options: FullConfig) {
 
     case "standard": {
       bot.pathfinder.setGoal(goal, true);
-
       break
     }
 
@@ -140,7 +137,8 @@ export function followEntity(bot: Bot, goal: any, options: FullConfig) {
       break
     }
   }
-
+  
+  return goal;
 }
 
 export function stopFollow(bot: Bot, mode: FollowConfig["mode"]) {
