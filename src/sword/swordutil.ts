@@ -76,7 +76,6 @@ export function generateGoal(bot: Bot, entity: Entity, options: FullConfig) {
     }
 
     case "standard": {
-      const tmp = options.followConfig as FollowConfig
       const tmp2 = new PredictiveGoal(
         bot,
         entity,
@@ -93,6 +92,7 @@ export function generateGoal(bot: Bot, entity: Entity, options: FullConfig) {
 
 
 export function goalEquals(bot: Bot, currentGoal: any, goal: any, options: FullConfig) {
+  if (currentGoal == null || goal == null) return false;
   switch (options.followConfig.mode) {
     case "jump": {
       return true;
@@ -119,6 +119,7 @@ export function goalEquals(bot: Bot, currentGoal: any, goal: any, options: FullC
 
     }
   }
+  return false;
 }
 
 export function followEntity(bot: Bot, goal: any, options: FullConfig) {

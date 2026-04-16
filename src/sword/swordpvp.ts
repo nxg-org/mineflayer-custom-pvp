@@ -418,7 +418,7 @@ export class SwordPvp extends EventEmitter {
     const farAway = this.botReach() >= this.options.genericConfig.attackRange;
     if (farAway) {
       const goal = generateGoal(this.bot, this.target, this.options)
-      if (!goalEquals(this.bot, this.targetGoal, goal, this.options)) {
+      if (!this.targetGoal || !goalEquals(this.bot, this.targetGoal, goal, this.options)) {
         this.targetGoal = followEntity(this.bot, this.target, this.options);
       }
 
