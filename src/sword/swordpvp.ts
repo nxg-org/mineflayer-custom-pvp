@@ -270,6 +270,7 @@ export class SwordPvp extends EventEmitter {
     this.lastTarget = this.target;
     this.bot.tracker.stopTrackingEntity(this.target);
     this.target = undefined;
+    this.targetGoal = undefined;
     stopFollow(this.bot, this.options.followConfig.mode);
     this.bot.clearControlStates();
     this.emit("stoppedAttacking");
