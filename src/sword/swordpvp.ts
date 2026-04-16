@@ -9,7 +9,7 @@ import { getTargetYaw, lookingAt, movingAt, toRadians } from "../calc/mathUtils"
 import { attack } from "../util";
 import { defaultConfig, FullConfig, getConfig } from "./swordconfigs";
 import { MaxDamageOffset, NewPVPTicks, OldPVPTicks } from "./sworddata";
-import { followEntity, stopFollow } from "./swordutil";
+import { followEntity, generateGoal, goalEquals, stopFollow } from "./swordutil";
 import { EntityRaycastReturn } from "@nxg-org/mineflayer-util-plugin/lib/rayTracingFunctions";
 const { getEntityAABB } = AABBUtils;
 
@@ -344,12 +344,12 @@ export class SwordPvp extends EventEmitter {
     const reach = this.options.genericConfig.attackRange;
 
 
-    
+
     const hit = this.bot.util.raytrace.entityRaytrace(eyePos, eyeDir, reach, (e) => e.id === this.target?.id)
-    
+
     this.wasVisible = hit === this.target
     if (this.wasVisible) return;
-    
+
   }
 
   async causeCritical(): Promise<boolean> {
@@ -417,7 +417,11 @@ export class SwordPvp extends EventEmitter {
     }
     const farAway = this.botReach() >= this.options.genericConfig.attackRange;
     if (farAway) {
-      this.targetGoal = followEntity(this.bot, this.target, this.options);
+      const goal = generateGoal(this.bot, this.target, this.options)
+      if (!goalEquals(this.bot, this.targetGoal, goal, this.options)) {
+        this.targetGoal = followEntity(this.bot, this.target, this.options);
+      }
+
     } else {
       if (this.targetGoal) {
         stopFollow(this.bot, this.options.followConfig.mode);

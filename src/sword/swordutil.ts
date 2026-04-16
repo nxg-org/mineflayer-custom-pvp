@@ -61,7 +61,7 @@ class PredictiveGoal extends goals.GoalFollow {
   }
 }
 
-export function followEntity(bot: Bot, entity: Entity, options: FullConfig) {
+export function generateGoal(bot: Bot, entity: Entity, options: FullConfig) {
   switch (options.followConfig.mode) {
     case "jump": {
       // const tmp1 = GoalFactory.predictEntity(
@@ -83,16 +83,64 @@ export function followEntity(bot: Bot, entity: Entity, options: FullConfig) {
         options.followConfig.distance,
         options.followConfig.predictTicks ?? 0
       );
-      bot.pathfinder.setGoal(tmp2, true);
       return tmp2;
     }
     case "custom": {
-      const goal = options.followConfig.goal(bot, entity, options);
-      bot.pathfinder.setGoal(goal, true);
+      return options.followConfig.goal(bot, entity, options);
+
+      break
+    }
+  }
+}
+
+
+export function goalEquals(bot: Bot, currentGoal: any, goal: any, options: FullConfig) {
+  switch (options.followConfig.mode) {
+    case "jump": {
+      return true;
+    }
+
+    case "standard": {
+      const oGoal1 = currentGoal as goals.Goal
+      const goal1 = goal as goals.Goal;
+      if (oGoal1 instanceof goals.GoalFollow || oGoal1 instanceof PredictiveGoal) {
+        return oGoal1.entity === goal.entity && oGoal1.x === goal.x && oGoal1.z === goal.z && oGoal1.y === goal.y && oGoal1.rangeSq === goal.rangeSq
+      } else {
+        return oGoal1 === goal
+      }
+
+    }
+    case "custom": {
+      const oGoal1 = currentGoal as goals.Goal
+      const goal1 = goal as goals.Goal;
+      if (oGoal1 instanceof goals.GoalFollow || oGoal1 instanceof PredictiveGoal) {
+        return oGoal1.entity === goal.entity && oGoal1.x === goal.x && oGoal1.z === goal.z && oGoal1.y === goal.y && oGoal1.rangeSq === goal.rangeSq
+      } else {
+        return oGoal1 === goal
+      }
+
+    }
+  }
+}
+
+export function followEntity(bot: Bot, goal: any, options: FullConfig) {
+  switch (options.followConfig.mode) {
+    case "jump": {
       break
     }
 
+    case "standard": {
+      bot.pathfinder.setGoal(goal, true);
+
+      break
+    }
+
+    case "custom": {
+      bot.pathfinder.setGoal(goal, true);
+      break
+    }
   }
+
 }
 
 export function stopFollow(bot: Bot, mode: FollowConfig["mode"]) {
