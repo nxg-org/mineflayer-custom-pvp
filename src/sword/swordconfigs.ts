@@ -1,4 +1,5 @@
 import { Bot } from "mineflayer";
+import type { goals } from "mineflayer-pathfinder"
 
 export interface FullConfig {
   genericConfig: GenericConfig;
@@ -50,9 +51,9 @@ export type TapConfig = {
 
 export type KBConfig =
   | {
-      enabled: boolean;
-      mode: "jump";
-    }
+    enabled: boolean;
+    mode: "jump";
+  }
   | { enabled: boolean; mode: "velocity"; hRatio?: number; yRatio: number }
   | { enabled: boolean; mode: "shift" | "jumpshift"; delay?: number };
 
@@ -65,20 +66,20 @@ export type OnHitConfig = {
 
 export type ReactionCritConfig =
   | {
-      enabled: false;
-    }
+    enabled: false;
+  }
   | { enabled: true; maxWaitTicks?: number; maxWaitDistance?: number; maxPreemptiveTicks?: number };
 
 export type CriticalsConfig = {
   enabled: boolean;
   reaction: ReactionCritConfig;
 } & (
-  | {
+    | {
       mode: "hop" | "shorthop";
       attemptRange?: number;
     }
-  | { enabled: boolean; mode: "packet"; bypass?: boolean }
-);
+    | { enabled: boolean; mode: "packet"; bypass?: boolean }
+  );
 
 export type ShieldConfig = {
   enabled: boolean;
@@ -93,9 +94,11 @@ export type RotateConfig = {
 };
 
 export type FollowConfig = {
-  mode: "jump" | "standard";
-  distance: number;
-} & ({ predict: false } | { predict: true, predictTicks?: number})
+} & (
+  { mode: "standard", predictTicks?: number, distance: number } | 
+  { mode: "jump", distance: number } | 
+  { mode: "custom", goal: goals.Goal }
+)
 
 
 
@@ -136,7 +139,7 @@ export const defaultConfig: FullConfig = {
     mode: "backoff",
     kbCancel: {
       enabled: true,
-      mode: "jump", 
+      mode: "jump",
     },
   },
   rotateConfig: {
@@ -159,14 +162,14 @@ export const defaultConfig: FullConfig = {
   followConfig: {
     mode: "standard",
     distance: 3,
-    predict: true
+    predictTicks: 4,
   },
   cps: 15
 };
 
 export function getConfig(bot: Bot): FullConfig {
   // deep clone the default config
-  const ret= JSON.parse(JSON.stringify(defaultConfig)) as FullConfig;
+  const ret = JSON.parse(JSON.stringify(defaultConfig)) as FullConfig;
 
   if (bot.supportFeature('doesntHaveOffHandSlot')) {
     ret.critConfig.reaction.enabled = false; // don't bother, just hit when you can

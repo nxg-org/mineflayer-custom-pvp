@@ -63,7 +63,7 @@ class PredictiveGoal extends goals.GoalFollow {
 
 export function followEntity(bot: Bot, entity: Entity, options: FullConfig) {
   switch (options.followConfig.mode) {
-    case "jump":
+    case "jump": {
       // const tmp1 = GoalFactory.predictEntity(
       //   bot,
       //   entity,
@@ -72,15 +72,25 @@ export function followEntity(bot: Bot, entity: Entity, options: FullConfig) {
       // );
       // bot.jumpPather.goto(tmp1);
       // return tmp1;
-    case "standard":
+      break
+    }
+
+    case "standard": {
+      const tmp = options.followConfig as FollowConfig
       const tmp2 = new PredictiveGoal(
         bot,
         entity,
         options.followConfig.distance,
-        options.followConfig.predict ? options.followConfig.predictTicks ?? 4 : 0
+        options.followConfig.predictTicks ?? 0
       );
       bot.pathfinder.setGoal(tmp2, true);
       return tmp2;
+    }
+    case "custom": {
+      bot.pathfinder.setGoal(options.followConfig.goal, true);
+      break
+    }
+
   }
 }
 
