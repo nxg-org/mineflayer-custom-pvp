@@ -87,7 +87,8 @@ export function followEntity(bot: Bot, entity: Entity, options: FullConfig) {
       return tmp2;
     }
     case "custom": {
-      bot.pathfinder.setGoal(options.followConfig.goal, true);
+      const goal = options.followConfig.goal(bot, entity, options);
+      bot.pathfinder.setGoal(goal, true);
       break
     }
 

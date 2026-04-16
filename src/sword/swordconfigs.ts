@@ -1,5 +1,6 @@
 import { Bot } from "mineflayer";
 import type { goals } from "mineflayer-pathfinder"
+import { Entity } from "prismarine-entity";
 
 export interface FullConfig {
   genericConfig: GenericConfig;
@@ -97,9 +98,8 @@ export type FollowConfig = {
 } & (
   { mode: "standard", predictTicks?: number, distance: number } | 
   { mode: "jump", distance: number } | 
-  { mode: "custom", goal: goals.Goal }
+  { mode: "custom", goal: (bot: Bot, entity: Entity, options: FullConfig) => goals.Goal }
 )
-
 
 
 export const defaultConfig: FullConfig = {
