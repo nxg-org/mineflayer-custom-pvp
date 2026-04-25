@@ -281,7 +281,7 @@ Here's a basic example showing how to use the SwordPvp module:
 ```js
 // Import required modules
 const mineflayer = require('mineflayer')
-const customPVP = require('mineflayer-advanced-pvp')
+const customPVP = require('mineflayer-custom-pvp')
 const { pathfinder, Movements } = require('mineflayer-pathfinder')
 
 // Create your bot

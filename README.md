@@ -1,6 +1,6 @@
 <div align="center">
 
-# Mineflayer Advanced PvP
+# Mineflayer Custom PvP
 
 *Enhanced combat capabilities for Mineflayer bots*
 
@@ -86,14 +86,14 @@ The BowPvP module enhances ranged combat with improved targeting and tactical aw
 ## Installation
 
 ```bash
-npm install mineflayer-advanced-pvp
+npm install mineflayer-custom-pvp
 ```
 
 ## Basic Usage
 
 ```javascript
 const mineflayer = require('mineflayer')
-const customPVP = require('mineflayer-advanced-pvp')
+const customPVP = require('mineflayer-custom-pvp')
 const { pathfinder, Movements } = require('mineflayer-pathfinder')
 
 // Create your bot
